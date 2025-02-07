@@ -1,167 +1,215 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { ShoppingCart, User, Menu, ChevronDown } from 'lucide-react';
 import { useAuth } from '../authentication/AuthContext';
-import { 
-  HomeIcon, 
-  ShoppingCartIcon, 
-  PackageIcon, 
-  PlusSquareIcon, 
-  LogOutIcon, 
-  UserIcon,
-  MenuIcon,
-  XIcon,
-  SearchIcon
-} from 'lucide-react';
 
-import ProductSearch from '../details/ProductSearch'
-
-// Product categories configuration
-const PRODUCT_CATEGORIES = [
-  'Electronics', 'Fashion', 'Home and Kitchen', 
-  'Health and Personal Care', 'Books and Stationery', 
-  'Sports and Outdoors', 'Toys & Games', 
-  'Beauty & Cosmetics', 'Automotive', 
-  'Jewelry & Accessories', 'Groceries & Food', 
-  'Baby Products', 'Pet Supplies', 
-  'Tools & Hardware', 'Office Supplies', 
-  'Musical Instruments', 'Furniture', 
-  'Art & Craft', 'Industrial & Scientific', 
-  'Video Games', 'Music'
-];
-
-const ProductDropdown = ({ isOpen, onClose }) => {
-  if (!isOpen) return null;
-
-  return (
-    <div 
-      className="absolute right-0 mt-2 w-80 bg-white/90 backdrop-blur-lg rounded-xl shadow-2xl z-50 border border-blue-100"
-      onMouseLeave={onClose}
-    >
-      <div className="grid grid-cols-4 gap-2 p-4 max-h-96 overflow-y-auto">
-        {PRODUCT_CATEGORIES.map((category) => (
-          <Link 
-            key={category} 
-            to={`/products/${category.replace(/\s+/g, '-')}`} 
-            className="text-xs text-gray-700 hover:bg-blue-50 p-2 rounded text-center transition-all duration-200 ease-in-out"
-          >
-            {category}
-          </Link>
-        ))}
-      </div>
-    </div>
-  );
-};
-
-const NavBar = () => {
-  const { authState, dispatch } = useAuth();
-  const [isProductDropdownOpen, setProductDropdownOpen] = useState(false);
+const Navbar = () => {
+  const { authState } = useAuth();
+  const [isCartOpen, setIsCartOpen] = useState(false);
+  const [isUserOpen, setIsUserOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [cartItems, setCartItems] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
 
-  const handleLogout = () => {
-    dispatch({ type: 'LOGOUT' });
-  };
+  const navLinks = [
+    { name: 'Home', href: '/' },
+    { name: 'Products', href: '/all-products' },
+    { name: 'Sell Product', href: '/add-product' },
+    { name: "Today's Deals", href: '/todays-deals' },
+  ];
 
-  const toggleMobileMenu = () => {
-    setIsMobileMenuOpen(!isMobileMenuOpen);
-  };
+  useEffect(() => {
+    const fetchCartItems = async () => {
+      if (isCartOpen) {
+        setIsLoading(true);
+        setError(null);
+        try {
+          const response = await fetch('http://localhost:8003/cart', {
+            headers: {
+              Authorization: `Bearer ${authState.token}`,
+            },
+          });
+          if (!response.ok) {
+            throw new Error('Failed to fetch cart items');
+          }
+          const data = await response.json();
+          setCartItems(data);
+        } catch (err) {
+          setError(err.message);
+          setCartItems([]);
+        } finally {
+          setIsLoading(false);
+        }
+      }
+    };
 
-  const handleSearch = (e) => {
-    e.preventDefault();
-    console.log('Searching for:', searchQuery);
-  };
-
-  const NavLinks = () => (
-    <>
-      {authState.isAuthenticated ? (
-        <>
-          <Link to="/" className="flex items-center space-x-2 text-white hover:bg-blue-700/30 px-3 py-2 rounded-md">
-            <HomeIcon size={18} />
-            <span>Home</span>
-          </Link>
-          <div className="relative">
-            <button 
-              onMouseEnter={() => setProductDropdownOpen(true)}
-              className="flex items-center space-x-2 text-white hover:bg-blue-700/30 px-3 py-2 rounded-md"
-            >
-              <PackageIcon size={18} />
-              <span>Products</span>
-            </button>
-            <ProductDropdown isOpen={isProductDropdownOpen} onClose={() => setProductDropdownOpen(false)} />
-          </div>
-          <Link to="/cart" className="flex items-center space-x-2 text-white hover:bg-blue-700/30 px-3 py-2 rounded-md">
-            <ShoppingCartIcon size={18} />
-            <span>Cart</span>
-          </Link>
-          <Link to="/products" className="flex items-center space-x-2 text-white hover:bg-blue-700/30 px-3 py-2 rounded-md">
-            <ShoppingCartIcon size={18} />
-            <span>Products</span>
-          </Link>
-          <Link to="/add-product" className="flex items-center space-x-2 text-white hover:bg-blue-700/30 px-3 py-2 rounded-md">
-            <ShoppingCartIcon size={18} />
-            <span>Add Product</span>
-          </Link>
-          <Link to="/view-profile" className="flex items-center space-x-2 text-white hover:bg-blue-700/30 px-3 py-2 rounded-md">
-            <ShoppingCartIcon size={18} />
-            <span>My Profile</span>
-          </Link>
-          <Link to="/all-products" className="flex items-center space-x-2 text-white hover:bg-blue-700/30 px-3 py-2 rounded-md">
-            <ShoppingCartIcon size={18} />
-            <span>All Products</span>
-          </Link>
-          <Link to="/sales" className="flex items-center space-x-2 text-white hover:bg-blue-700/30 px-3 py-2 rounded-md">
-            <ShoppingCartIcon size={18} />
-            <span>My Sales</span>
-          </Link>
-          <Link to="/orders" className="flex items-center space-x-2 text-white hover:bg-blue-700/30 px-3 py-2 rounded-md">
-            <ShoppingCartIcon size={18} />
-            <span>My Orders</span>
-          </Link>
-          <button onClick={handleLogout} className="flex items-center space-x-2 text-white hover:bg-red-700/30 px-3 py-2 rounded-md">
-            <LogOutIcon size={18} />
-            <span>Logout</span>
-          </button>
-        </>
-      ) : (
-        <>
-          <Link to="/login" className="text-white bg-blue-500 hover:bg-blue-700 px-4 py-2 rounded-md">Login</Link>
-          <Link to="/register" className="text-white bg-green-500 hover:bg-green-700 px-4 py-2 rounded-md">Register</Link>
-        </>
-      )}
-    </>
-  );
+    fetchCartItems();
+  }, [isCartOpen, authState.token]);
 
   return (
-    <nav className="bg-blue-600 p-4 shadow-md relative">
-      <div className="max-w-7xl mx-auto flex justify-between items-center">
-        <Link to="/" className="text-white text-2xl font-bold flex items-center space-x-2">
-          <img src="/logo.png" alt="MultiVendorApp" className="h-8 w-8 rounded-full" />
-          MultiVendorApp
-        </Link>
+    <nav className="bg-white dark:bg-gray-800">
+      <div className="max-w-screen-xl mx-auto px-4 py-4">
+        <div className="flex items-center justify-between">
+          {/* Left Side: Logo & Navigation */}
+          <div className="flex items-center space-x-8">
+            <div className="shrink-0">
+              <Link to="/" className="flex items-center">
+                <span className="text-xl font-semibold text-gray-900 dark:text-white">
+                  Store
+                </span>
+              </Link>
+            </div>
+            <ul className="hidden lg:flex items-center space-x-8">
+              {navLinks.map((link) => (
+                <li key={link.name}>
+                  <a
+                    href={link.href}
+                    className="text-sm font-medium text-gray-900 hover:text-primary-700 dark:text-white dark:hover:text-primary-500"
+                  >
+                    {link.name}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
 
-        {/* Search Bar */}
-      <ProductSearch />
+          {/* Right Side: Cart Dropdown, User Menu & Mobile Menu */}
+          <div className="flex items-center space-x-4">
+            {/* Cart Button & Dropdown Placeholder */}
+            <div className="relative">
+              <button
+                onClick={() => setIsCartOpen(!isCartOpen)}
+                className="inline-flex items-center p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+              >
+                <ShoppingCart className="h-5 w-5 text-gray-900 dark:text-white" />
+                {/* "My Cart" text removed */}
+                <ChevronDown className="ml-1 h-4 w-4 text-gray-900 dark:text-white" />
+              </button>
 
-        <div className="hidden md:flex items-center space-x-4">
-          <NavLinks />
-        </div>
+              {isCartOpen && (
+                <div className="absolute right-0 mt-2 w-72 bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4">
+                  {isLoading ? (
+                    <div className="text-center py-4">
+                      <p className="text-sm text-gray-500 dark:text-gray-400">
+                        Loading cart items...
+                      </p>
+                    </div>
+                  ) : error ? (
+                    <div className="text-center py-4">
+                      <p className="text-sm text-red-500">{error}</p>
+                    </div>
+                  ) : cartItems.length === 0 ? (
+                    <div className="text-center py-4">
+                      <p className="text-sm text-gray-500 dark:text-gray-400">
+                        (Placeholder for cart items)
+                      </p>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="mb-2 text-sm text-gray-500 dark:text-gray-400">
+                        {cartItems.length} {cartItems.length === 1 ? 'item' : 'items'} in your cart:
+                      </div>
+                      <ul className="space-y-2">
+                        {cartItems.map((item, index) => (
+                          <li key={index} className="flex justify-between items-center">
+                            <span className="text-sm font-medium text-gray-900 dark:text-white">
+                              {item.product.name}
+                            </span>
+                            <span className="text-sm text-gray-500 dark:text-gray-400">
+                              Qty: {item.product.amount}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                      <Link
+                        to="/checkout"
+                        className="mt-4 w-full bg-primary-700 text-white rounded-lg px-4 py-2 hover:bg-primary-800 block text-center"
+                      >
+                        Checkout
+                      </Link>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
 
-        <div className="md:hidden">
-          <button onClick={toggleMobileMenu} className="text-white">
-            {isMobileMenuOpen ? <XIcon size={24} /> : <MenuIcon size={24} />}
-          </button>
-        </div>
-      </div>
+            {/* User Menu */}
+            <div className="relative">
+              <button
+                onClick={() => setIsUserOpen(!isUserOpen)}
+                className="inline-flex items-center p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+              >
+                <User className="h-5 w-5 text-gray-900 dark:text-white" />
+                <span className="ml-2 text-sm font-medium text-gray-900 dark:text-white">
+                  {authState.isAuthenticated && authState.user
+                    ? authState.user.name
+                    : 'Account'}
+                </span>
+                <ChevronDown className="ml-1 h-4 w-4 text-gray-900 dark:text-white" />
+              </button>
+              {isUserOpen && (
+                <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg">
+                  <div className="py-2">
+                    <Link
+                      to="/view-profile"
+                      className="block px-4 py-2 text-sm text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700"
+                    >
+                      My Account
+                    </Link>
+                    <Link
+                      to="/orders"
+                      className="block px-4 py-2 text-sm text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700"
+                    >
+                      Orders
+                    </Link>
+                    <Link
+                      to="/edit-profile"
+                      className="block px-4 py-2 text-sm text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700"
+                    >
+                      Settings
+                    </Link>
+                    <Link
+                      to="/sign-out"
+                      className="block px-4 py-2 text-sm text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700"
+                    >
+                      Sign Out
+                    </Link>
+                  </div>
+                </div>
+              )}
+            </div>
 
-      {isMobileMenuOpen && (
-        <div className="md:hidden absolute top-full left-0 w-full bg-blue-600 z-50">
-          <div className="flex flex-col space-y-2 p-4">
-            <NavLinks />
+            {/* Mobile Menu Button */}
+            <button
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              className="lg:hidden p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+            >
+              <Menu className="h-5 w-5 text-gray-900 dark:text-white" />
+            </button>
           </div>
         </div>
-      )}
+
+        {/* Mobile Menu */}
+        {isMobileMenuOpen && (
+          <div className="lg:hidden mt-4 bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
+            <ul className="space-y-3">
+              {navLinks.map((link) => (
+                <li key={link.name}>
+                  <a
+                    href={link.href}
+                    className="block text-sm font-medium text-gray-900 dark:text-white hover:text-primary-700 dark:hover:text-primary-500"
+                  >
+                    {link.name}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
     </nav>
   );
 };
 
-export default NavBar;
+export default Navbar;

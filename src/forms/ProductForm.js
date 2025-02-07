@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../authentication/AuthContext';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { FaUpload, FaImage, FaTags, FaBox, FaDollarSign, FaCheckCircle } from 'react-icons/fa';
+import { FaImage, FaTags, FaBox, FaDollarSign, FaCheckCircle } from 'react-icons/fa';
 
 const ProductForm = () => {
   const { authState } = useAuth();
@@ -18,7 +18,7 @@ const ProductForm = () => {
   const [sizes, setSizes] = useState([]);
   const [colors, setColors] = useState([]);
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
+  const [setSuccess] = useState('');
   const [uploading, setUploading] = useState(false);
 
   const PRODUCT_CATEGORIES = [
@@ -115,7 +115,7 @@ const ProductForm = () => {
   return (
     <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
       <div className="w-full max-w-2xl bg-white shadow-2xl rounded-xl overflow-hidden">
-        <div className="bg-gradient-to-r from-blue-500 to-purple-600 p-6">
+        <div className="bg-gradient-to-r from-gray-800 to-gray-900 p-6">
           <h2 className="text-3xl font-bold text-white">
             {id ? 'Edit Product' : 'Create New Product'}
           </h2>
@@ -130,7 +130,7 @@ const ProductForm = () => {
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="relative">
-              <label className="block text-gray-700 flex items-center mb-2">
+              <label className="block text-gray-700 items-center mb-2">
                 <FaTags className="mr-2 text-blue-500" /> Product Name
               </label>
               <input
@@ -144,7 +144,7 @@ const ProductForm = () => {
             </div>
 
             <div className="relative">
-              <label className="block text-gray-700 flex items-center mb-2">
+              <label className="block text-gray-700 items-center mb-2">
                 <FaBox className="mr-2 text-green-500" /> Category
               </label>
               <select
@@ -165,7 +165,7 @@ const ProductForm = () => {
           </div>
 
           <div className="relative">
-            <label htmlFor="desc" className="block text-gray-700 flex items-center mb-2">
+            <label htmlFor="desc" className="block text-gray-700 items-center mb-2">
               Description
             </label>
             <textarea
@@ -178,7 +178,7 @@ const ProductForm = () => {
           </div>
 
           <div>
-            <label className="block text-gray-700 flex items-center mb-2">
+            <label className="block text-gray-700 items-center mb-2">
               <FaImage className="mr-2 text-indigo-500" /> Product Image
             </label>
             <div className="flex items-center space-x-4">
@@ -201,7 +201,7 @@ const ProductForm = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div>
-              <label className="block text-gray-700 flex items-center mb-2">
+              <label className="block text-gray-700 items-center mb-2">
                 <FaDollarSign className="mr-2 text-green-600" /> Price
               </label>
               <input
@@ -214,7 +214,7 @@ const ProductForm = () => {
               />
             </div>
             <div>
-              <label className="block text-gray-700 flex items-center mb-2">
+              <label className="block text-gray-700 items-center mb-2">
                 <FaBox className="mr-2 text-purple-500" /> Stock
               </label>
               <input
@@ -269,7 +269,7 @@ const ProductForm = () => {
 
           <button 
             type="submit" 
-            className="w-full py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg hover:opacity-90 transition duration-300 flex items-center justify-center"
+            className="w-full py-3 bg-gradient-to-r from-gray-500 to-gray-900 text-white rounded-lg hover:opacity-90 transition duration-300 flex items-center justify-center"
           >
             <FaCheckCircle className="mr-2" />
             {id ? 'Update Product' : 'Create Product'}

@@ -14,8 +14,8 @@ const initialState = {
   },
   cartItems: [],
   selectedOptions: {
-    size: '',
-    color: '',
+    size: null,
+    color: null,
   },
   quantity: 1,
   error: '',
@@ -46,7 +46,12 @@ function reducer(state, action) {
     case ACTIONS.UPDATE_SELECTED_OPTIONS:
       return {
         ...state,
-        selectedOptions: { ...state.selectedOptions, ...action.payload },
+        selectedOptions: { 
+          ...state.selectedOptions, 
+          ...Object.fromEntries(
+            Object.entries(action.payload).map(([key, value]) => [key, value || null])
+          )
+        },
       };
     case ACTIONS.SET_QUANTITY:
       return { ...state, quantity: action.payload };
@@ -151,6 +156,14 @@ const ProductDetail = () => {
     }
   }, [state.product, state.cartItems]);
 
+  // Determine if the product is in the cart using string comparison
+  const isProductInCart = state.cartItems.some((item) => {
+    if (typeof item.product === 'string') {
+      return String(item.product) === String(state.product._id);
+    }
+    return String(item?.product?._id) === String(state.product._id);
+  });
+
   // Handler to add the product to the cart and then navigate to /cart after a delay
   const handleAddToCart = useCallback(async () => {
     try {
@@ -162,21 +175,15 @@ const ProductDetail = () => {
         return;
       }
 
-      if (!state.selectedOptions.size || !state.selectedOptions.color) {
-        dispatch({
-          type: ACTIONS.SET_ERROR,
-          payload: "Please select both size and color before adding to cart.",
-        });
-        return;
-      }
+    
 
       // Update the backend cart
       await manageCart(
         id,
         state.quantity,
         authState.token,
-        [state.selectedOptions.size],
-        [state.selectedOptions.color],
+        state.selectedOptions.size ? [state.selectedOptions.size] :null,
+        state.selectedOptions.color ? [state.selectedOptions.color] : null,
         false
       );
 
@@ -195,10 +202,10 @@ const ProductDetail = () => {
       // Clear any previous errors
       dispatch({ type: ACTIONS.SET_ERROR, payload: "" });
 
-      // Delay for 3 seconds before navigating to the cart page
+      // Delay before navigating to the cart page
       setTimeout(() => {
         navigate('/cart');
-      }, 2000);
+      }, 400);
     } catch (err) {
       dispatch({
         type: ACTIONS.SET_ERROR,
@@ -221,7 +228,6 @@ const ProductDetail = () => {
           type: ACTIONS.SET_ERROR,
           payload: "Please login to manage cart",
         });
-        
         return;
       }
 
@@ -269,9 +275,11 @@ const ProductDetail = () => {
   // Display error message if one exists
   if (state.error) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-blue-900 py-12 px-6">
-        <div className="bg-red-500/10 border border-red-500 text-red-500 p-4 rounded-lg text-center">
-          {state.error}
+      <div className="min-h-screen bg-gray-100 py-12 px-4">
+        <div className="max-w-4xl mx-auto">
+          <div className="bg-red-100 border border-red-300 text-red-700 p-4 rounded-md text-center">
+            {state.error}
+          </div>
         </div>
       </div>
     );
@@ -280,114 +288,112 @@ const ProductDetail = () => {
   // Show a loading indicator while fetching data
   if (state.isLoading || !state.product) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-blue-900 py-12 px-6">
-        <div className="flex items-center justify-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white"></div>
-        </div>
+      <div className="min-h-screen bg-gray-100 py-12 px-4 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-gray-500"></div>
       </div>
     );
   }
 
-  // Determine if the product is in the cart using string comparison
-  const isProductInCart = state.cartItems.some((item) => {
-    if (typeof item.product === 'string') {
-      return String(item.product) === String(state.product._id);
-    }
-    return String(item?.product?._id) === String(state.product._id);
-  });
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-blue-900 py-12 px-6 relative">
-      <div className="absolute top-0 right-0 w-72 h-72 bg-blue-500/30 rounded-full blur-3xl"></div>
-      <div className="absolute bottom-0 left-0 w-72 h-72 bg-purple-500/30 rounded-full blur-3xl"></div>
-
-      <div className="container mx-auto max-w-4xl bg-white/10 backdrop-blur-lg rounded-xl p-6">
-        <h2 className="text-4xl font-bold text-center mb-8 bg-clip-text text-transparent bg-gradient-to-r from-blue-300 to-purple-300">
-          {state.product.name}
-        </h2>
-
-        <div className="flex flex-col lg:flex-row gap-8">
-          <div className="w-full lg:w-1/2">
-            <img
-              src={state.product.img[0]}
-              alt={state.product.name}
-              className="w-full h-auto object-cover rounded-lg shadow-xl"
-            />
-          </div>
-
-          <div className="flex-1 space-y-6">
-            <p className="text-white text-lg leading-relaxed">{state.product.desc}</p>
-            <p className="text-2xl font-bold text-blue-300">Price: ${state.product.price}</p>
-            <p className="text-white">Type: {state.product.type}</p>
-            <p className="text-white">Available: {state.product.available ? 'Yes' : 'No'}</p>
-            <p className="text-white">Stock: {state.product.stock}</p>
-
-            <div className="space-y-4">
-              {/* Size Selector */}
-              <div>
-                <label className="block text-white text-sm font-medium mb-2">Size:</label>
-                <select
-                  className="w-full bg-white/10 border border-white/20 rounded-lg p-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  value={state.selectedOptions.size}
-                  onChange={(e) =>
-                    dispatch({
-                      type: ACTIONS.UPDATE_SELECTED_OPTIONS,
-                      payload: { size: e.target.value },
-                    })
-                  }
-                  disabled={isProductInCart}
-                >
-                  <option value="">Select size</option>
-                  {state.product.sizes?.map((size) => (
-                    <option key={size} value={size}>
-                      {size}
-                    </option>
-                  ))}
-                </select>
+    <div className="min-h-screen bg-gray-100 py-12 px-4">
+      <div className="max-w-4xl mx-auto bg-white rounded-lg shadow-lg overflow-hidden">
+        <div className="p-8">
+          <h2 className="text-4xl font-bold text-center text-gray-800 mb-8">
+            {state.product.name}
+          </h2>
+          <div className="lg:flex lg:space-x-8">
+            {/* Product Image */}
+            <div className="lg:w-1/2 mb-8 lg:mb-0">
+              <img
+                src={state.product.img[0]}
+                alt={state.product.name}
+                className="w-full h-auto object-cover rounded-lg shadow-md"
+              />
+            </div>
+            {/* Product Details */}
+            <div className="lg:w-1/2 space-y-6">
+              <p className="text-gray-700 text-lg leading-relaxed">
+                {state.product.desc}
+              </p>
+              <div className="text-2xl font-semibold text-blue-600">
+                Price: ${state.product.price}
+              </div>
+              <div className="text-gray-600">
+                <span className="font-medium">Type:</span> {state.product.type}
+              </div>
+              <div className="text-gray-600">
+                <span className="font-medium">Available:</span> {state.product.available ? 'Yes' : 'No'}
+              </div>
+              <div className="text-gray-600">
+                <span className="font-medium">Stock:</span> {state.product.stock}
+              </div>
+              
+              {/* Options */}
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                {/* Size Selector */}
+                <div>
+                  <label className="block text-gray-800 text-sm font-medium mb-2">Size:</label>
+                  <select
+                    className="w-full border border-gray-300 rounded-md p-2 text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    value={state.selectedOptions.size || ''}
+                    onChange={(e) =>
+                      dispatch({
+                        type: ACTIONS.UPDATE_SELECTED_OPTIONS,
+                        payload: { size: e.target.value || null },
+                      })
+                    }
+                    disabled={isProductInCart}
+                  >
+                    <option value="">Select size</option>
+                    {state.product.sizes?.map((size) => (
+                      <option key={size} value={size}>
+                        {size}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                {/* Color Selector */}
+                <div>
+                  <label className="block text-gray-800 text-sm font-medium mb-2">Color:</label>
+                  <select
+                    className="w-full border border-gray-300 rounded-md p-2 text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    value={state.selectedOptions.color || ''}
+                    onChange={(e) =>
+                      dispatch({
+                        type: ACTIONS.UPDATE_SELECTED_OPTIONS,
+                        payload: { color: e.target.value || null },
+                      })
+                    }
+                    disabled={isProductInCart}
+                  >
+                    <option value="">Select color</option>
+                    {state.product.colors?.map((color) => (
+                      <option key={color} value={color}>
+                        {color}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                {/* Quantity Input */}
+                <div className="sm:col-span-2">
+                  <label className="block text-gray-800 text-sm font-medium mb-2">Quantity:</label>
+                  <input
+                    type="number"
+                    className="w-full border border-gray-300 rounded-md p-2 text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    value={state.quantity}
+                    min="1"
+                    onChange={(e) =>
+                      dispatch({
+                        type: ACTIONS.SET_QUANTITY,
+                        payload: parseInt(e.target.value, 10) || 1,
+                      })
+                    }
+                    disabled={isProductInCart}
+                  />
+                </div>
               </div>
 
-              {/* Color Selector */}
-              <div>
-                <label className="block text-white text-sm font-medium mb-2">Color:</label>
-                <select
-                  className="w-full bg-white/10 border border-white/20 rounded-lg p-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  value={state.selectedOptions.color}
-                  onChange={(e) =>
-                    dispatch({
-                      type: ACTIONS.UPDATE_SELECTED_OPTIONS,
-                      payload: { color: e.target.value },
-                    })
-                  }
-                  disabled={isProductInCart}
-                >
-                  <option value="">Select color</option>
-                  {state.product.colors?.map((color) => (
-                    <option key={color} value={color}>
-                      {color}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Quantity Input */}
-              <div>
-                <label className="block text-white text-sm font-medium mb-2">Quantity:</label>
-                <input
-                  type="number"
-                  className="w-full bg-white/10 border border-white/20 rounded-lg p-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  value={state.quantity}
-                  min="1"
-                  onChange={(e) =>
-                    dispatch({
-                      type: ACTIONS.SET_QUANTITY,
-                      payload: parseInt(e.target.value, 10) || 1,
-                    })
-                  }
-                  disabled={isProductInCart}
-                />
-              </div>
-
-              {/* Conditional Cart Button */}
+              {/* Cart Action Button */}
               <div className="pt-4">
                 { !isProductInCart ? (
                   <button
@@ -407,43 +413,53 @@ const ProductDetail = () => {
                   </button>
                 )}
               </div>
+            {/* Seller Information */}
+<div className="text-gray-600 text-sm pt-4 flex items-center gap-2">
+  {state.sellerDetails.img && (
+    <img
+      src={state.sellerDetails.img}
+      alt={state.sellerDetails.name}
+      className="w-8 h-8 rounded-full object-cover"
+    />
+  )}
+  <span>
+    Seller:{" "}
+    {state.sellerDetails.id ? (
+      <Link to={`/seller/${state.sellerDetails.id}`} className="text-blue-600 hover:underline">
+        {state.sellerDetails.name}
+      </Link>
+    ) : (
+      state.sellerDetails.name
+    )}
+  </span>
+  {state.sellerDetails.error && (
+    <span className="text-red-500 ml-2">(Error fetching seller details)</span>
+  )}
+</div>
+
             </div>
-
-            <p className="text-white pt-4">
-              Seller:{' '}
-              {state.sellerDetails.id ? (
-                <Link to={`/seller/${state.sellerDetails.id}`} className="text-blue-300 hover:underline">
-                  {state.sellerDetails.name}
-                </Link>
-              ) : (
-                state.sellerDetails.name
-              )}
-              {state.sellerDetails.error && (
-                <span className="text-red-400 ml-2">(Error fetching seller details)</span>
-              )}
-            </p>
           </div>
+
+          {/* Admin Controls: Only shown if the user is not a Buyer */}
+          { authState.user.role !== "Buyer" && (
+            <div className="flex justify-center mt-8 space-x-4">
+              <button
+                onClick={handleEditClick}
+                className="flex items-center px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors duration-200"
+              >
+                <Edit className="w-5 h-5 mr-2" />
+                Edit Product
+              </button>
+              <button
+                onClick={handleDeleteClick}
+                className="flex items-center px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors duration-200"
+              >
+                <Trash className="w-5 h-5 mr-2" />
+                Delete Product
+              </button>
+            </div>
+          )}
         </div>
-
-        {/* Admin Controls: Only shown if authState.role is not "buyer" */}
-        { authState.user.role !== "Buyer" && (
-          <div className="flex justify-center mt-8 space-x-4">
-            <button
-              onClick={handleEditClick}
-              className="flex items-center px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors duration-200"
-            >
-              <Edit className="w-5 h-n mr-2" />
-              Edit Product
-            </button>
-            <button
-              onClick={handleDeleteClick}
-              className="flex items-center px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors duration-200"
-            >
-              <Trash className="w-5 h-5 mr-2" />
-              Delete Product
-            </button>
-          </div>
-        )}
       </div>
     </div>
   );

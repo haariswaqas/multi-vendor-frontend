@@ -20,6 +20,7 @@ import ProductForm from './forms/ProductForm';
 import EditOrderStatus from './forms/EditOrderStatus';
 import Wishlist from './lists/Wishlist';
 import ProductList from './lists/ProductList';
+import ProductCategoryList from './lists/ProductCategoryList';
 import ProductListing from './lists/ProductListing';
 import SellerProductsList from './lists/SellerProductsList'
 import ProductDetail from './details/ProductDetail';
@@ -163,6 +164,14 @@ const App = () => {
                         element={
                             <PrivateRoute>
                                 <ProductSearch />
+                            </PrivateRoute>
+                        }
+                    />
+                         <Route
+                        path="/product-categories"
+                        element={
+                            <PrivateRoute>
+                                <ProductCategoryList />
                             </PrivateRoute>
                         }
                     />

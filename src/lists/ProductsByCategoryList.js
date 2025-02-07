@@ -1,15 +1,23 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../authentication/AuthContext';
 import { Link, useParams } from 'react-router-dom';
-import { fetchProducts,fetchProductsByCategory, updateLocalStorageWishlist, updateLocalStorageCart, addToWishlist, removeFromWishlist, addToCart, removeFromCart } from '../services/ProductServices';
 import { 
   HeartIcon, 
-  ShoppingCartIcon, 
-  PlusIcon, 
-  MinusIcon, 
-  InfoIcon 
-} from 'lucide-react';
 
+  InfoIcon, 
+  Sparkles 
+} from 'lucide-react';
+import { 
+  updateLocalStorageWishlist, 
+  updateLocalStorageCart, 
+  addToWishlist, 
+  removeFromWishlist, 
+  addToCart, 
+  removeFromCart 
+} from '../services/ProductServices';
+import ProductCategoryList from './ProductCategoryList';
+
+/* -------------------------- ProductCard Component -------------------------- */
 const ProductCard = ({ 
   product, 
   isInWishlist, 
@@ -21,106 +29,77 @@ const ProductCard = ({
   loadingWishlist,
   loadingCart 
 }) => {
-  const [quantity, setQuantity] = useState(1);
-
-  const handleQuantityChange = (change) => {
-    setQuantity(Math.max(1, quantity + change));
-    
-  };
-
   return (
-    
-    <div className="bg-white/10 backdrop-blur-lg border border-white/20 
-    rounded-2xl p-6 space-y-4 transform transition-all duration-300 
-    hover:scale-105 hover:shadow-2xl group relative overflow-hidden">
-      {/* Product Image */}
-      <div className="relative">
-        <img 
-          src={product.img} 
-          alt={product.name} 
-          className="w-full h-48 object-cover rounded-lg 
-          group-hover:scale-110 transition-transform duration-300"
-        />
-        <Link 
-          to={`/product/${product._id}`} 
-          className="absolute top-2 right-2 bg-white/20 p-2 rounded-full 
-          hover:bg-white/40 transition-all duration-300"
-        >
-          <InfoIcon className="w-5 h-5 text-white" />
-        </Link>
-      </div>
-
-      {/* Product Details */}
-      <div className="space-y-2">
-        <h3 className="text-xl font-bold text-white truncate">{product.name}</h3>
-        <p className="text-white/75 line-clamp-2">{product.desc}</p>
-        <div className="flex justify-between items-center">
-          <span className="text-2xl font-bold text-blue-300">${product.price}</span>
-          <span className={`text-sm ${product.available ? 'text-green-400' : 'text-red-400'}`}>
-            {product.available ? 'In Stock' : 'Out of Stock'}
-          </span>
-        </div>
-      </div>
-
-      {/* Action Buttons */}
-      <div className="grid grid-cols-2 gap-4">
-        {/* Wishlist Button */}
-        <button
-          onClick={isInWishlist ? onRemoveFromWishlist : onAddToWishlist}
-          disabled={loadingWishlist}
-          className={`flex items-center justify-center space-x-2 py-2 rounded-full 
-          transition-all duration-300 ${
-            isInWishlist 
-              ? 'bg-red-600/70 text-white hover:bg-red-700' 
-              : 'bg-white/10 text-white hover:bg-white/20'
-          } 
-          disabled:opacity-50`}
-        >
-          <HeartIcon 
-            className={`w-5 h-5 ${isInWishlist ? 'fill-current' : ''}`} 
+    <div className="group relative">
+      {/* Card Container */}
+      <div className="relative bg-white rounded-xl overflow-hidden transition-all duration-300 hover:shadow-xl">
+        {/* Image Section */}
+        <div className="relative aspect-square overflow-hidden">
+          <img 
+            src={product.img || "/api/placeholder/400/400"} 
+            alt={product.name} 
+            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
           />
-          <span>{loadingWishlist ? 'Processing...' : (isInWishlist ? 'Remove' : 'Wishlist')}</span>
-        </button>
-
-        {/* Cart Button */}
-        {isInCart ? (
-          <button
-            onClick={onRemoveFromCart}
-            disabled={loadingCart}
-            className="flex items-center justify-center space-x-2 py-2 
-            bg-red-600/70 text-white rounded-full hover:bg-red-700 
-            disabled:opacity-50"
+          <Link 
+            to={`/product/${product._id}`} 
+            className="absolute top-4 right-4 p-2 bg-white rounded-full shadow-lg hover:bg-gray-100 transition-colors"
           >
-            <ShoppingCartIcon className="w-5 h-5" />
-            <span>{loadingCart ? 'Processing...' : 'Remove'}</span>
-          </button>
-        ) : (
-          <div className="grid grid-cols-[auto,1fr] gap-2">
-            <div className="flex items-center bg-white/10 rounded-full">
-              <button 
-                onClick={() => handleQuantityChange(-1)}
-                className="p-2 hover:bg-white/20 rounded-l-full"
-              >
-                <MinusIcon className="w-4 h-4 text-white" />
-              </button>
-              <span className="px-3 text-white">{quantity}</span>
-              <button 
-                onClick={() => handleQuantityChange(1)}
-                className="p-2 hover:bg-white/20 rounded-r-full"
-              >
-                <PlusIcon className="w-4 h-4 text-white" />
-              </button>
+            <InfoIcon className="w-5 h-5 text-gray-700" />
+          </Link>
+        </div>
+
+        {/* Content Section */}
+        <div className="p-6 space-y-4">
+          {/* Product Info */}
+          <div className="space-y-2">
+            <h3 className="text-lg font-semibold text-gray-900 truncate">
+              {product.name}
+            </h3>
+            <p className="text-sm text-gray-700 line-clamp-2">
+              {product.desc}
+            </p>
+          </div>
+
+          {/* Price and Stock */}
+          <div className="flex items-center justify-between">
+            <div className="space-y-1">
+              <p className="text-2xl font-bold text-gray-900">${product.price}</p>
+              <div className="flex items-center gap-2">
+                <span className={`text-sm ${product.available ? 'text-green-600' : 'text-red-600'}`}>
+                  {product.available ? 'In Stock' : 'Out of Stock'}
+                </span>
+              </div>
             </div>
+
+            {/* Wishlist Button */}
             <button
-              onClick={() => onAddToCart(quantity)}
-              disabled={loadingCart}
-              className="flex items-center justify-center space-x-2 py-2 
-              bg-blue-600/70 text-white rounded-full hover:bg-blue-700 
-              disabled:opacity-50"
+              onClick={() => {
+                if (!loadingWishlist) {
+                  isInWishlist ? onRemoveFromWishlist() : onAddToWishlist();
+                }
+              }}
+              disabled={loadingWishlist}
+              className={`p-3 rounded-full transition-all duration-300 ${
+                isInWishlist 
+                  ? 'bg-red-100 hover:bg-red-200' 
+                  : 'bg-gray-100 hover:bg-gray-200'
+              } disabled:opacity-50 disabled:cursor-not-allowed`}
             >
-              <ShoppingCartIcon className="w-5 h-5" />
-              <span>{loadingCart ? 'Adding...' : 'Add to Cart'}</span>
+              <HeartIcon 
+                className={`w-6 h-6 transition-colors duration-300 ${
+                  isInWishlist 
+                    ? 'text-red-500 fill-red-500' 
+                    : 'text-gray-600'
+                }`} 
+              />
             </button>
+          </div>
+        </div>
+
+        {/* Optional Loading Overlay */}
+        {(loadingWishlist || loadingCart) && (
+          <div className="absolute inset-0 bg-white/60 flex items-center justify-center">
+            <div className="w-8 h-8 border-4 border-gray-300 border-t-gray-500 rounded-full animate-spin" />
           </div>
         )}
       </div>
@@ -128,6 +107,7 @@ const ProductCard = ({
   );
 };
 
+/* -------------------------- ProductList Component -------------------------- */
 const ProductList = () => {
   const { authState } = useAuth();
   const { type } = useParams();
@@ -137,9 +117,8 @@ const ProductList = () => {
   const [cart, setCart] = useState(new Set());
   const [loadingWishlist, setLoadingWishlist] = useState(new Map());
   const [loadingCart, setLoadingCart] = useState(new Map());
+  const [showCategories, setShowCategories] = useState(false);
 
-  // Previous useEffect and helper functions remain the same as in the original component
-  // ... (keep the existing localStorage, fetch, and action methods)
   // Initialize wishlist and cart from localStorage
   useEffect(() => {
     const storedWishlist = JSON.parse(localStorage.getItem('wishlist')) || [];
@@ -149,13 +128,13 @@ const ProductList = () => {
     setCart(new Set(Array.isArray(storedCart) ? storedCart : []));
   }, []);
 
-  // Fetch products from backend
+  // Fetch products by category using the URL parameter "type"
   useEffect(() => {
-    const fetchProductsByCategory = async () => {
+    const fetchProductsByCategoryFunc = async () => {
       try {
         const response = await fetch(`http://localhost:8002/category/${type}`, {
           headers: {
-            'Authorization': `Bearer ${authState.token}`, // Include the token in the headers
+            'Authorization': `Bearer ${authState.token}`,
           },
         });
         if (!response.ok) {
@@ -163,126 +142,159 @@ const ProductList = () => {
         }
         const data = await response.json();
         setProducts(data);
+        setShowCategories(false);
       } catch (error) {
         setError(error.message || 'Failed to fetch products by category');
       }
     };
 
-    fetchProductsByCategory();
-  }, [type, authState.token]); // Dependency on token
+    fetchProductsByCategoryFunc();
+  }, [type, authState.token]);
 
-  // Save wishlist to localStorage
+  // Helpers to update localStorage for wishlist and cart
   const updateLocalStorageWishlistFromService = (updatedWishlist) => {
     updateLocalStorageWishlist(updatedWishlist);
   };
 
-  // Save cart to localStorage
   const updateLocalStorageCartFromService = (updatedCart) => {
     updateLocalStorageCart(updatedCart);
   };
 
-  // Add product to wishlist
+  // Wishlist service calls
   const addToWishlistFromService = async (productId) => {
-    setLoadingWishlist((prev) => new Map(prev).set(productId, true)); // Set loading state for the product
+    setLoadingWishlist((prev) => new Map(prev).set(productId, true));
     try {
-      const response = await addToWishlist(productId, authState.token);
-      console.log('Product added to wishlist:', response.data);
+      await addToWishlist(productId, authState.token);
       setWishlist((prev) => {
-        const updatedWishlist = new Set(prev).add(productId); // Update wishlist state
-        updateLocalStorageWishlistFromService(updatedWishlist); // Update localStorage
+        const updatedWishlist = new Set(prev).add(productId);
+        updateLocalStorageWishlistFromService(updatedWishlist);
         return updatedWishlist;
       });
     } catch (error) {
       console.error('Error adding product to wishlist:', error);
     } finally {
       setLoadingWishlist((prev) => {
-        const updatedLoading = new Map(prev);
-        updatedLoading.delete(productId); // Clear loading state
-        return updatedLoading;
+        const updated = new Map(prev);
+        updated.delete(productId);
+        return updated;
       });
     }
   };
 
-  // Remove product from wishlist
   const removeFromWishlistFromService = async (productId) => {
-    setLoadingWishlist((prev) => new Map(prev).set(productId, true)); // Set loading state for the product
+    setLoadingWishlist((prev) => new Map(prev).set(productId, true));
     try {
-      const response = await removeFromWishlist(productId, authState.token);
-      console.log('Product removed from wishlist:', response.data);
+      await removeFromWishlist(productId, authState.token);
       setWishlist((prev) => {
         const updatedWishlist = new Set(prev);
-        updatedWishlist.delete(productId); // Update wishlist state
-        updateLocalStorageWishlistFromService(updatedWishlist); // Update localStorage
+        updatedWishlist.delete(productId);
+        updateLocalStorageWishlistFromService(updatedWishlist);
         return updatedWishlist;
       });
     } catch (error) {
       console.error('Error removing product from wishlist:', error);
     } finally {
       setLoadingWishlist((prev) => {
-        const updatedLoading = new Map(prev);
-        updatedLoading.delete(productId); // Clear loading state
-        return updatedLoading;
+        const updated = new Map(prev);
+        updated.delete(productId);
+        return updated;
       });
     }
   };
 
-  // Add product to cart with quantity
+  // Cart service calls
   const addToCartFromService = async (productId, quantity) => {
-    setLoadingCart((prev) => new Map(prev).set(productId, true)); // Set loading state for the product
+    setLoadingCart((prev) => new Map(prev).set(productId, true));
     try {
-      console.log('QUANTITYYYY',quantity)
-      const response = await addToCart(productId, quantity, authState.token);
-     
-      console.log('Product added to cart:', response.data);
-      console.log('QUANTITYYYYY')
-      console.log(quantity)
+      await addToCart(productId, quantity, authState.token);
       setCart((prev) => {
-        const updatedCart = new Set(prev).add(productId); // Update cart state
-        updateLocalStorageCartFromService(updatedCart); // Update localStorage
+        const updatedCart = new Set(prev).add(productId);
+        updateLocalStorageCartFromService(updatedCart);
         return updatedCart;
       });
     } catch (error) {
       console.error('Error adding product to cart:', error);
     } finally {
       setLoadingCart((prev) => {
-        const updatedLoading = new Map(prev);
-        updatedLoading.delete(productId); // Clear loading state
-        return updatedLoading;
+        const updated = new Map(prev);
+        updated.delete(productId);
+        return updated;
       });
     }
   };
 
-  // Remove product from cart
   const removeFromCartFromService = async (productId) => {
-    setLoadingCart((prev) => new Map(prev).set(productId, true)); // Set loading state for the product
+    setLoadingCart((prev) => new Map(prev).set(productId, true));
     try {
-      const response = await removeFromCart(productId, authState.token);
-      console.log('Product removed from cart:', response.data);
+      await removeFromCart(productId, authState.token);
       setCart((prev) => {
         const updatedCart = new Set(prev);
-        updatedCart.delete(productId); // Update cart state
-        updateLocalStorageCartFromService(updatedCart); // Update localStorage
+        updatedCart.delete(productId);
+        updateLocalStorageCartFromService(updatedCart);
         return updatedCart;
       });
     } catch (error) {
       console.error('Error removing product from cart:', error);
     } finally {
       setLoadingCart((prev) => {
-        const updatedLoading = new Map(prev);
-        updatedLoading.delete(productId); // Clear loading state
-        return updatedLoading;
+        const updated = new Map(prev);
+        updated.delete(productId);
+        return updated;
       });
     }
   };
-  
+
   return (
-    <div className="min-h-screen bg-gray-900 text-white p-6">
-      <div className="max-w-7xl mx-auto">
-        <h1 className="text-3xl font-bold text-center mb-6 capitalize">
-          {type ? type.replace('-', ' ') : 'Products'}
-        </h1>
-        {error && <p className="text-red-500 text-center">{error}</p>}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div className="min-h-screen bg-gradient-to-b from-white via-blue-50 to-gray-500 py-16 px-6 relative">
+      {/* Decorative background element */}
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-blue-200/20 via-transparent to-transparent" />
+      <div className="container mx-auto relative">
+        {/* Header Section */}
+        <div className="text-center space-y-6 mb-16">
+          <div className="flex items-center justify-center gap-3 mb-2">
+            <Sparkles className="w-8 h-8 text-gray-600" />
+            <h1 className="text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-gray-600 via-gray-1100 to-gray-900">
+              {type ? type.replace('-', ' ') : 'Products'}
+            </h1>
+            <Sparkles className="w-8 h-8 text-gray-900" />
+          </div>
+          <p className="text-lg text-gray-700 max-w-2xl mx-auto">
+            Discover our carefully curated collection of exceptional {type ? type.replace('-', ' ') : 'products'}.
+          </p>
+          {/* Browse Categories Button */}
+          <div className="text-center">
+            <button 
+              onClick={() => setShowCategories(prev => !prev)}
+              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+            >
+              {showCategories ? 'Hide Categories' : 'Browse Categories'}
+            </button>
+            <Link to ="/all-products"
+                            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors ml-3"
+            >
+              View All Products
+            </Link>
+          </div>
+        </div>
+
+        {/* Conditionally render the ProductCategoryList */}
+        {showCategories && (
+          <div className="mb-16">
+            <ProductCategoryList />
+          </div>
+        )}
+
+        {/* Error Message */}
+        {error && (
+          <div className="max-w-md mx-auto mb-8">
+            <div className="bg-red-100 border border-red-200 text-red-600 p-4 rounded-lg text-center">
+              {error}
+            </div>
+          </div>
+        )}
+
+        {/* Products Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
           {products.map((product) => (
             <ProductCard
               key={product._id}
@@ -301,7 +313,6 @@ const ProductList = () => {
       </div>
     </div>
   );
-  
 };
 
 export default ProductList;
