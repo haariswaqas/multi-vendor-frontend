@@ -1,8 +1,8 @@
 // Cart.js
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
-import { useNavigate } from 'react-router-dom';
-import { ShoppingCartIcon, PackageIcon, CreditCardIcon, CheckCircle2 } from 'lucide-react';
+import { useNavigate, Link } from 'react-router-dom';
+import { ShoppingCartIcon, PackageIcon, CreditCardIcon, CheckCircle2, ArrowRightIcon } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle, AlertTriangle } from '../components/ui/alert';
 import {
   AlertDialog,
@@ -210,22 +210,7 @@ const Cart = () => {
    * 3. Opens the payment modal to collect card details.
    */
   const handlePlaceOrder = async () => {
-    if (!cart.length || !cart[0].items || cart[0].items.length === 0) {
-      setError('Your cart is empty. Please add items to the cart.');
-      return;
-    }
-    try {
-      setLoading(true);
-      setError(null);
-      const totalDollars = parseFloat(calculateTotal());
-      const totalCents = Math.round(totalDollars * 100);
-      console.log(`Total: $${calculateTotal()} => ${totalCents} cents`);
-      await createPaymentIntent(totalCents);
-      // The payment modal should now appear.
-    } catch (err) {
-      setError(err.message || 'Failed to initialize payment');
-      setLoading(false);
-    }
+    navigate('/cart')
   };
 
   /**
@@ -233,60 +218,28 @@ const Cart = () => {
    * After successful payment confirmation, places the order by calling the /order endpoint.
    */
   const handleOrderPlacement = async () => {
-    try {
-      const orderPayload = {
-        items: cart[0].items.map(item => ({
-          product: { _id: item.product._id },
-          amount: item.amount,
-          size: item.size || (item.product.sizes && item.product.sizes[0]) || null,
-          color: item.color || (item.product.colors && item.product.colors[0]) || null,
-        })),
-        amount: calculateTotal(),
-        status: 'Pending',
-      };
-
-      const orderResponse = await fetch('http://localhost:8003/order', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${authState.token}`,
-        },
-        body: JSON.stringify(orderPayload),
-      });
-
-      if (!orderResponse.ok) {
-        throw new Error(`Error ${orderResponse.status}: Failed to place order`);
-      }
-
-      setShowSuccessAlert(true);
-      setTimeout(() => {
-        setShowSuccessAlert(false);
-        navigate('/orders');
-      }, 2000);
-      await fetchCart();
-    } catch (err) {
-      setError(err.message || 'Failed to place order');
-    } finally {
-      setLoading(false);
-      setShowPaymentModal(false);
-      setClientSecret(null);
-    }
+   navigate('/cart')
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 p-8">
-      <div className="max-w-4xl mx-auto bg-white rounded-xl shadow-lg overflow-hidden">
+    <>
+      <div className="bg-white rounded-xl shadow-lg overflow-hidden max-w-4xl mx-auto">
         {/* Header */}
         <div className="px-6 py-4 bg-gray-800 flex items-center justify-between">
           <div className="flex items-center space-x-4">
             <ShoppingCartIcon className="w-8 h-8 text-white" />
-            <h1 className="text-3xl font-bold text-white">Your Cart</h1>
+            <div className="flex items-center">
+              <h1 className="text-3xl font-bold text-white">Your Cart</h1>
+              <Link to="/cart" className="ml-4 w-6 h-6 text-white">
+                <ArrowRightIcon />
+              </Link>
+            </div>
             <span className="text-white/90">
               {cart.length > 0 ? `${cart[0].items.length} items` : 'Empty'}
             </span>
           </div>
         </div>
-
+  
         {/* Error Alert */}
         {error && (
           <Alert variant="destructive" className="mx-6 mt-4 bg-red-100 border border-red-300 text-red-700 rounded-md p-3">
@@ -295,7 +248,7 @@ const Cart = () => {
             <AlertDescription>{error}</AlertDescription>
           </Alert>
         )}
-
+  
         {/* Success Alert */}
         {showSuccessAlert && (
           <Alert className="mx-6 mt-4 bg-green-100 border border-green-300 text-green-700 rounded-md p-3">
@@ -304,7 +257,7 @@ const Cart = () => {
             <AlertDescription>Order placed successfully! Redirecting...</AlertDescription>
           </Alert>
         )}
-
+  
         {/* Cart Items */}
         <div className="p-6">
           {loading ? (
@@ -326,7 +279,10 @@ const Cart = () => {
                 const selectedSize = item.size || (item.product.sizes && item.product.sizes[0]) || null;
                 const selectedColor = item.color || (item.product.colors && item.product.colors[0]) || null;
                 return (
-                  <div key={item._id} className="bg-white rounded-lg p-4 flex items-center space-x-4 hover:shadow-md transition-shadow">
+                  <div
+                    key={item._id}
+                    className="bg-white rounded-lg p-4 flex items-center space-x-4 hover:shadow-md transition-shadow"
+                  >
                     <img
                       src={item.product.img && item.product.img[0] ? item.product.img[0] : ''}
                       alt={item.product.name}
@@ -336,7 +292,8 @@ const Cart = () => {
                       <h3 className="text-xl font-bold text-gray-800">{item.product.name}</h3>
                       <p className="text-gray-600">{item.product.desc}</p>
                       <div className="text-gray-500 mt-1">
-                        <span>Size: {selectedSize || 'None'}</span> | <span>Color: {selectedColor || 'None'}</span>
+                        <span>Size: {selectedSize || 'None'}</span> |{' '}
+                        <span>Color: {selectedColor || 'None'}</span>
                       </div>
                       <div className="flex items-center space-x-4 mt-2">
                         <span className="text-blue-500 font-semibold">${item.product.price.toFixed(2)}</span>
@@ -344,7 +301,9 @@ const Cart = () => {
                       </div>
                     </div>
                     <div className="flex flex-col items-end">
-                      <span className="text-xl font-bold text-green-600">${(item.product.price * item.amount).toFixed(2)}</span>
+                      <span className="text-xl font-bold text-green-600">
+                        ${(item.product.price * item.amount).toFixed(2)}
+                      </span>
                       <button
                         onClick={() =>
                           setRemovalDialog({ open: true, item: { ...item, selectedSize, selectedColor } })
@@ -360,7 +319,7 @@ const Cart = () => {
             </div>
           )}
         </div>
-
+  
         {/* Order Summary */}
         {cart.length > 0 && cart[0].items.length > 0 && (
           <div className="bg-white px-6 py-4 border-t border-gray-200">
@@ -381,14 +340,16 @@ const Cart = () => {
             </button>
           </div>
         )}
-
+  
         {/* Removal Confirmation Dialog */}
         <AlertDialog open={removalDialog.open} onOpenChange={open => setRemovalDialog({ open, item: removalDialog.item })}>
           <AlertDialogContent className="bg-white text-gray-800 border border-gray-200 rounded-md">
             <AlertDialogHeader>
               <AlertDialogTitle>Remove Item</AlertDialogTitle>
               <AlertDialogDescription className="text-gray-600">
-                Are you sure you want to remove "{removalDialog.item?.product?.name}" (Size: {removalDialog.item?.selectedSize || 'None'}, Color: {removalDialog.item?.selectedColor || 'None'}) from your cart?
+                Are you sure you want to remove &quot;{removalDialog.item?.product?.name}&quot; (Size:{' '}
+                {removalDialog.item?.selectedSize || 'None'}, Color: {removalDialog.item?.selectedColor || 'None'})
+                from your cart?
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
@@ -397,7 +358,13 @@ const Cart = () => {
               </AlertDialogCancel>
               <AlertDialogAction
                 className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-md"
-                onClick={() => removeFromCart(removalDialog.item.product._id, removalDialog.item.selectedSize, removalDialog.item.selectedColor)}
+                onClick={() =>
+                  removeFromCart(
+                    removalDialog.item.product._id,
+                    removalDialog.item.selectedSize,
+                    removalDialog.item.selectedColor
+                  )
+                }
               >
                 Remove
               </AlertDialogAction>
@@ -405,7 +372,7 @@ const Cart = () => {
           </AlertDialogContent>
         </AlertDialog>
       </div>
-
+  
       {/* Payment Modal: Rendered when a clientSecret is available */}
       {showPaymentModal && clientSecret && (
         <Elements stripe={stripePromise} options={{ clientSecret }}>
@@ -413,14 +380,15 @@ const Cart = () => {
             clientSecret={clientSecret}
             onPaymentSuccess={handleOrderPlacement}
             onPaymentFailed={(err) => {
-              setError("Payment failed: " + err.message);
+              setError('Payment failed: ' + err.message);
               setShowPaymentModal(false);
             }}
           />
         </Elements>
       )}
-    </div>
+    </>
   );
+  
 };
 
 export default Cart;

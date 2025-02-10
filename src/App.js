@@ -4,6 +4,7 @@ import { AuthProvider } from './authentication/AuthContext';
 import './App.css'; // Or './tailwind.css', depending on your setup
 import PrivateRoute from './routes/PrivateRoute';
 import RestrictedRoute from './routes/RestrictedRoute';
+import SellerRoutes from './routes/SellerRoutes';
 
 import NavBar from './essentials/NavBar';
 import Home from './essentials/Home';
@@ -29,6 +30,7 @@ import ProductsByCategoryList from './lists/ProductsByCategoryList';
 import Login from './authentication/Login';
 import Register from './authentication/Register';
 import Cart from './lists/Cart';
+import ShoppingCart from './lists/ShoppingCart';
 import OrdersList from './lists/OrdersList';
 
 const App = () => {
@@ -97,9 +99,9 @@ const App = () => {
                     <Route
                         path="/add-product"
                         element={
-                            <PrivateRoute>
+                            <SellerRoutes>
                                 <ProductForm />
-                            </PrivateRoute>
+                            </SellerRoutes>
                         }
                     />
                         <Route
@@ -114,7 +116,7 @@ const App = () => {
                         path="/cart"
                         element={
                             <PrivateRoute>
-                                <Cart />
+                                <ShoppingCart />
                             </PrivateRoute>
                         }
                     />
@@ -154,9 +156,9 @@ const App = () => {
                           <Route
                         path="/seller-products"
                         element={
-                            <PrivateRoute>
+                            <SellerRoutes>
                                 <SellerProductsList />
-                            </PrivateRoute>
+                            </SellerRoutes>
                         }
                     />
                                <Route

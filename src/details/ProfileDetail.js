@@ -1,16 +1,19 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../authentication/AuthContext';
 import axios from 'axios';
-import { useNavigate } from 'react-router-dom';
 import SellerProductsList from '../lists/SellerProductsList';
 import { Badge } from '../components/ui/profile-badge';
+import { Link } from 'react-router-dom';
+import OrdersChart from '../charts/OrdersChart';
+import EditProfileModal from '../forms/EditProfileModal'; // Adjust the path as needed
+import SalesChart from '../charts/SalesChart';
 
 const ProfileDetail = () => {
   const { authState } = useAuth();
   const [profileData, setProfileData] = useState(null);
   const [salesData, setSalesData] = useState([]);
   const [error, setError] = useState('');
-  const navigate = useNavigate();
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -50,7 +53,7 @@ const ProfileDetail = () => {
   }
 
   const handleEditProfile = () => {
-    navigate('/edit-profile');
+    setIsEditModalOpen(true);
   };
 
   return (
@@ -88,6 +91,7 @@ const ProfileDetail = () => {
                 { label: 'Postal Code', value: profileData?.profile?.postalCode },
                 { label: 'City', value: profileData?.profile?.city },
                 { label: 'Country', value: profileData?.profile?.country },
+                { label: 'About', value: profileData?.profile?.about },
               ].map((item, index) => (
                 <div key={index}>
                   <p className="text-sm text-gray-500">{item.label}</p>
@@ -134,11 +138,28 @@ const ProfileDetail = () => {
         </div>
 
         {/* Conditionally render SellerProductsList if the user is not a buyer */}
-        {authState.role !== 'buyer' && (
+        {authState.user.role === 'Seller' && (
           <div className="bg-white rounded-xl shadow-sm p-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">Your Products</h2>
+            <h2 className="text-xl font-semibold text-gray-900 mb-4">Dashboard</h2>
+            <SalesChart />
             <SellerProductsList />
+           
           </div>
+          
+        )
+        
+        
+        }
+           {authState.user.role === 'Buyer' && (
+          <div className="bg-white rounded-xl shadow-sm p-6">
+            <h2 className="text-xl font-semibold text-gray-900 mb-4">Your Orders</h2>
+            <OrdersChart />
+          </div>
+        )}
+
+        {/* Render the Edit Profile Modal */}
+        {isEditModalOpen && (
+          <EditProfileModal onClose={() => setIsEditModalOpen(false)} />
         )}
       </div>
     </div>

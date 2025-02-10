@@ -10,7 +10,7 @@ const ProductForm = () => {
   const navigate = useNavigate();
   const [name, setName] = useState('');
   const [desc, setDesc] = useState('');
-  const [img, setImg] = useState('');
+  const [img, setImg] = useState([]);
   const [type, setType] = useState('');
   const [stock, setStock] = useState(0);
   const [price, setPrice] = useState(0);
@@ -18,7 +18,7 @@ const ProductForm = () => {
   const [sizes, setSizes] = useState([]);
   const [colors, setColors] = useState([]);
   const [error, setError] = useState('');
-  const [setSuccess] = useState('');
+  const [success, setSuccess] = useState('');
   const [uploading, setUploading] = useState(false);
 
   const PRODUCT_CATEGORIES = [
@@ -46,8 +46,9 @@ const ProductForm = () => {
           setAvailable(product.available);
           setSizes(product.sizes);
           setColors(product.colors);
-        } catch (error) {
+        } catch (err) {
           setError('Failed to fetch product details.');
+          console.error('Error fetching product:', err);
         }
       };
       fetchProduct();
@@ -55,34 +56,59 @@ const ProductForm = () => {
   }, [id, authState.token]);
 
   const handleImageUpload = async (event) => {
-    const file = event.target.files[0];
-    if (!file) return;
-
+    const files = Array.from(event.target.files);
+    if (files.length === 0) return;
+  
     setUploading(true);
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('upload_preset', 'upload_preset');
-    formData.append('cloud_name', 'dqwub0fhb');
-
+    setError('');
+  
     try {
-      const response = await axios.post(
-        'https://api.cloudinary.com/v1_1/dqwub0fhb/image/upload',
-        formData
-      );
-      const uploadedImageUrl = response.data.secure_url;
-      setImg(uploadedImageUrl);
+      const uploadPromises = files.map(file => {
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('upload_preset', 'upload_preset');
+        formData.append('cloud_name', 'dqwub0fhb');
+  
+        return axios.post(
+          'https://api.cloudinary.com/v1_1/dqwub0fhb/image/upload',
+          formData,
+          {
+            headers: {
+              'Content-Type': 'multipart/form-data'
+            }
+          }
+        );
+      });
+  
+      const responses = await Promise.all(uploadPromises);
+      const newImageUrls = responses.map(response => response.data.secure_url);
+      
+      setImg(prevImages => [...prevImages, ...newImageUrls]);
       setUploading(false);
-    } catch (error) {
-      setError('Image upload failed.');
+    } catch (err) {
+      setError('Failed to upload one or more images. Please try again.');
+      console.error('Error uploading images:', err);
       setUploading(false);
     }
+  };
+  
+  const removeImage = (indexToRemove) => {
+    setImg(prevImages => prevImages.filter((_, index) => index !== indexToRemove));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     const productData = {
-      name, desc, img, type, stock, price, available, sizes, colors,
+      name,
+      desc,
+      img,
+      type,
+      stock,
+      price,
+      available,
+      sizes,
+      colors,
     };
 
     try {
@@ -103,14 +129,11 @@ const ProductForm = () => {
 
       setSuccess(id ? 'Product updated successfully!' : 'Product created successfully!');
       navigate('/all-products');
-    } catch (error) {
-      setError('You are not the seller and do not have the permission to edit this product.');
+    } catch (err) {
+      console.error('Error submitting product:', err);
+      setError('Failed to save product. Please try again.');
     }
   };
-
-  if (authState.user.role !== 'Seller') {
-    return <p>You are not authorized to view this page.</p>;
-  }
 
   return (
     <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
@@ -125,6 +148,12 @@ const ProductForm = () => {
           {error && (
             <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
               {error}
+            </div>
+          )}
+          
+          {success && (
+            <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative" role="alert">
+              {success}
             </div>
           )}
           
@@ -179,23 +208,42 @@ const ProductForm = () => {
 
           <div>
             <label className="block text-gray-700 items-center mb-2">
-              <FaImage className="mr-2 text-indigo-500" /> Product Image
+              <FaImage className="mr-2 text-indigo-500 inline" /> Product Images
             </label>
             <div className="flex items-center space-x-4">
               <input
                 type="file"
                 accept="image/*"
+                multiple
                 onChange={handleImageUpload}
                 className="w-full file:mr-4 file:rounded-full file:border-0 file:bg-blue-50 file:px-4 file:py-2 file:text-blue-700 hover:file:bg-blue-100"
               />
             </div>
-            {uploading && <p className="text-gray-500">Uploading...</p>}
-            {img && (
-              <img 
-                src={img} 
-                alt="Product" 
-                className="mt-4 mx-auto h-32 w-32 object-cover rounded-full shadow-lg"
-              />
+            {uploading && (
+              <div className="mt-4 flex items-center text-gray-500">
+                <div className="animate-spin mr-2 h-5 w-5 border-2 border-blue-500 border-t-transparent rounded-full"></div>
+                Uploading images...
+              </div>
+            )}
+            {img.length > 0 && (
+              <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4">
+                {img.map((image, index) => (
+                  <div key={index} className="relative group">
+                    <img
+                      src={image}
+                      alt={`Product ${index + 1}`}
+                      className="h-32 w-32 object-cover rounded-lg shadow-lg"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeImage(index)}
+                      className="absolute top-1 right-1 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
             )}
           </div>
 

@@ -1,207 +1,242 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ShoppingCart, User, Menu, ChevronDown } from 'lucide-react';
+import axios from 'axios';
+import { Menu, ChevronDown, Search } from 'lucide-react';
+import ProductSearch from '../details/ProductSearch';
 import { useAuth } from '../authentication/AuthContext';
 
 const Navbar = () => {
-  const { authState } = useAuth();
-  const [isCartOpen, setIsCartOpen] = useState(false);
+  const { authState, dispatch } = useAuth();
   const [isUserOpen, setIsUserOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [cartItems, setCartItems] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const [isSearchVisible, setIsSearchVisible] = useState(false);
+  const [profileData, setProfileData] = useState(null);
+  const [profileError, setProfileError] = useState(null);
 
-  const navLinks = [
-    { name: 'Home', href: '/' },
-    { name: 'Products', href: '/all-products' },
-    { name: 'Sell Product', href: '/add-product' },
-    { name: "Today's Deals", href: '/todays-deals' },
-  ];
+  let navLinks = [];
+  if (authState?.user?.role) {
+    if (authState.user.role === 'Buyer') {
+      navLinks = [
+        { name: 'Home', href: '/' },
+        { name: 'Products', href: '/all-products' },
+        { name: 'My Cart', href: '/cart' },
+        { name: 'My Orders', href: '/orders' },
+        { name: 'My Wishlist', href: '/wishlist' },
+       
+      ];
+    } else if (authState.user.role === 'Seller') {
+      navLinks = [
+        { name: 'Home', href: '/' },
+        { name: 'Products', href: '/all-products' },
+        { name: 'My Products', href: '/seller-products' },
+        { name: 'Sell Product', href: '/add-product' },
+        { name: 'My Sales', href: '/sales' },
+      ];
+    }
+  }
 
+  // Use a default image if none is available
+  const defaultProfileImg = '/default-profile.png';
+
+  // Fetch the profile data using the same API as in ProfileDetail
   useEffect(() => {
-    const fetchCartItems = async () => {
-      if (isCartOpen) {
-        setIsLoading(true);
-        setError(null);
-        try {
-          const response = await fetch('http://localhost:8003/cart', {
-            headers: {
-              Authorization: `Bearer ${authState.token}`,
-            },
-          });
-          if (!response.ok) {
-            throw new Error('Failed to fetch cart items');
-          }
-          const data = await response.json();
-          setCartItems(data);
-        } catch (err) {
-          setError(err.message);
-          setCartItems([]);
-        } finally {
-          setIsLoading(false);
-        }
+    const fetchProfile = async () => {
+      try {
+        const response = await axios.get('http://localhost:8001/', {
+          headers: { Authorization: `Bearer ${authState.token}` },
+        });
+        setProfileData(response.data);
+      } catch (error) {
+        setProfileError(
+          error.response ? error.response.data.message : 'Failed to load profile'
+        );
       }
     };
 
-    fetchCartItems();
-  }, [isCartOpen, authState.token]);
+    if (authState.isAuthenticated) {
+      fetchProfile();
+    }
+  }, [authState.token, authState.isAuthenticated]);
 
   return (
-    <nav className="bg-white dark:bg-gray-800">
+    <nav className="bg-gradient-to-r from-green-700 to-blue-700">
       <div className="max-w-screen-xl mx-auto px-4 py-4">
         <div className="flex items-center justify-between">
           {/* Left Side: Logo & Navigation */}
           <div className="flex items-center space-x-8">
             <div className="shrink-0">
               <Link to="/" className="flex items-center">
-                <span className="text-xl font-semibold text-gray-900 dark:text-white">
-                  Store
+                <img
+                  src="https://i.ibb.co/DHZ98Ghs/Cyber-Mart-Logo.jpg"
+                  alt="CyberMart Logo"
+                  className="w-10 h-10 mr-2"
+                />
+                <span className="text-xl font-semibold text-white">
+                  CyberMart 
                 </span>
               </Link>
             </div>
-            <ul className="hidden lg:flex items-center space-x-8">
-              {navLinks.map((link) => (
-                <li key={link.name}>
-                  <a
-                    href={link.href}
-                    className="text-sm font-medium text-gray-900 hover:text-primary-700 dark:text-white dark:hover:text-primary-500"
+            {authState.isAuthenticated ? (
+              <ul className="hidden lg:flex items-center space-x-8">
+                {navLinks.map((link) => (
+                  <li key={link.name}>
+                    <Link
+                      to={link.href}
+                      className="text-sm font-medium text-white hover:text-gray-900"
+                    >
+                      {link.name}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <ul className="hidden lg:flex items-center space-x-8">
+                <li>
+                  <Link
+                    to="/login"
+                    className="text-sm font-medium text-white hover:bg-green-500 hover:text-white rounded-lg px-4 py-2"
                   >
-                    {link.name}
-                  </a>
+                    Login
+                  </Link>
                 </li>
-              ))}
-            </ul>
+                <li>
+                  <Link
+                    to="/register"
+                    className="text-sm font-medium text-white hover:bg-blue-500 hover:text-white rounded-lg px-4 py-2"
+                  >
+                    Register
+                  </Link>
+                </li>
+              </ul>
+            )}
           </div>
 
-          {/* Right Side: Cart Dropdown, User Menu & Mobile Menu */}
+          {/* Right Side: Search & User Menu */}
           <div className="flex items-center space-x-4">
-            {/* Cart Button & Dropdown Placeholder */}
+            {/* Search Button & Search Box */}
             <div className="relative">
               <button
-                onClick={() => setIsCartOpen(!isCartOpen)}
-                className="inline-flex items-center p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+                onClick={() => setIsSearchVisible(!isSearchVisible)}
+                className="p-2 hover:bg-gray-100 rounded-lg"
               >
-                <ShoppingCart className="h-5 w-5 text-gray-900 dark:text-white" />
-                {/* "My Cart" text removed */}
-                <ChevronDown className="ml-1 h-4 w-4 text-gray-900 dark:text-white" />
+                <Search className="h-5 w-5 text-white" />
               </button>
-
-              {isCartOpen && (
-                <div className="absolute right-0 mt-2 w-72 bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4">
-                  {isLoading ? (
-                    <div className="text-center py-4">
-                      <p className="text-sm text-gray-500 dark:text-gray-400">
-                        Loading cart items...
-                      </p>
-                    </div>
-                  ) : error ? (
-                    <div className="text-center py-4">
-                      <p className="text-sm text-red-500">{error}</p>
-                    </div>
-                  ) : cartItems.length === 0 ? (
-                    <div className="text-center py-4">
-                      <p className="text-sm text-gray-500 dark:text-gray-400">
-                        (Placeholder for cart items)
-                      </p>
-                    </div>
-                  ) : (
-                    <>
-                      <div className="mb-2 text-sm text-gray-500 dark:text-gray-400">
-                        {cartItems.length} {cartItems.length === 1 ? 'item' : 'items'} in your cart:
-                      </div>
-                      <ul className="space-y-2">
-                        {cartItems.map((item, index) => (
-                          <li key={index} className="flex justify-between items-center">
-                            <span className="text-sm font-medium text-gray-900 dark:text-white">
-                              {item.product.name}
-                            </span>
-                            <span className="text-sm text-gray-500 dark:text-gray-400">
-                              Qty: {item.product.amount}
-                            </span>
-                          </li>
-                        ))}
-                      </ul>
-                      <Link
-                        to="/checkout"
-                        className="mt-4 w-full bg-primary-700 text-white rounded-lg px-4 py-2 hover:bg-primary-800 block text-center"
-                      >
-                        Checkout
-                      </Link>
-                    </>
-                  )}
-                </div>
-              )}
+              {isSearchVisible && <ProductSearch />}
             </div>
 
             {/* User Menu */}
-            <div className="relative">
-              <button
-                onClick={() => setIsUserOpen(!isUserOpen)}
-                className="inline-flex items-center p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
-              >
-                <User className="h-5 w-5 text-gray-900 dark:text-white" />
-                <span className="ml-2 text-sm font-medium text-gray-900 dark:text-white">
-                  {authState.isAuthenticated && authState.user
-                    ? authState.user.name
-                    : 'Account'}
-                </span>
-                <ChevronDown className="ml-1 h-4 w-4 text-gray-900 dark:text-white" />
-              </button>
-              {isUserOpen && (
-                <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg">
-                  <div className="py-2">
-                    <Link
-                      to="/view-profile"
-                      className="block px-4 py-2 text-sm text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700"
-                    >
-                      My Account
-                    </Link>
-                    <Link
-                      to="/orders"
-                      className="block px-4 py-2 text-sm text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700"
-                    >
-                      Orders
-                    </Link>
-                    <Link
-                      to="/edit-profile"
-                      className="block px-4 py-2 text-sm text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700"
-                    >
-                      Settings
-                    </Link>
-                    <Link
-                      to="/sign-out"
-                      className="block px-4 py-2 text-sm text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700"
-                    >
-                      Sign Out
-                    </Link>
+            {authState.isAuthenticated && (
+              <div className="relative">
+                <button
+                  onClick={() => setIsUserOpen(!isUserOpen)}
+                  className="inline-flex items-center p-2 hover:bg-gray-100 rounded-lg"
+                >
+                  <img
+                    src={profileData?.profile?.img || defaultProfileImg}
+                    alt="Profile"
+                    className="w-6 h-6 rounded-full object-cover"
+                  />
+                  <span className="ml-2 text-sm font-medium text-white">
+                    {profileData?.profile?.name || authState.user.name}
+                  </span>
+                  <ChevronDown className="ml-1 h-4 w-4 text-white" />
+                </button>
+                {isUserOpen && (
+                  <div className="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-lg z-50">
+                    {/* Dropdown Header with Profile Info */}
+                    <div className="px-4 py-3 border-b border-gray-200">
+                      <div className="flex items-center">
+                        <img
+                          src={profileData?.profile?.img || defaultProfileImg}
+                          alt="Profile"
+                          className="w-10 h-10 rounded-full object-cover"
+                        />
+                        <div className="ml-3">
+                          <p className="text-sm font-medium text-gray-900">
+                            {profileData?.profile?.name || authState.user.name}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            {authState.user.role}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                    {/* Dropdown Menu Links */}
+                    <div className="py-2">
+                      <Link
+                        to="/view-profile"
+                        className="block px-4 py-2 text-sm text-gray-900 hover:bg-gray-100"
+                      >
+                        My Profile
+                      </Link>
+                      <Link
+                        to="/orders"
+                        className="block px-4 py-2 text-sm text-gray-900 hover:bg-gray-100"
+                      >
+                        My Orders
+                      </Link>
+                      <Link
+                        to="/wishlist"
+                        className="block px-4 py-2 text-sm text-gray-900 hover:bg-gray-100"
+                      >
+                        My Wishlist
+                      </Link>
+                      {authState.user.role === 'Seller' && (
+                        <>
+                          <Link
+                            to="/sales"
+                            className="block px-4 py-2 text-sm text-gray-900 hover:bg-gray-100"
+                          >
+                            My Sales
+                          </Link>
+                          <Link
+                            to="/add-product"
+                            className="block px-4 py-2 text-sm text-gray-900 hover:bg-gray-100"
+                          >
+                            Sell Product
+                          </Link>
+                          <Link
+                            to="/seller-products"
+                            className="block px-4 py-2 text-sm text-gray-900 hover:bg-gray-100"
+                          >
+                            My Products
+                          </Link>
+                        </>
+                      )}
+                      <Link
+                        onClick={() => dispatch({ type: 'LOGOUT' })}
+                        className="block px-4 py-2 text-sm text-gray-900 hover:bg-red-500"
+                      >
+                        Logout
+                      </Link>
+                    </div>
                   </div>
-                </div>
-              )}
-            </div>
+                )}
+              </div>
+            )}
 
             {/* Mobile Menu Button */}
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="lg:hidden p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+              className="lg:hidden p-2 hover:bg-gray-100 rounded-lg"
             >
-              <Menu className="h-5 w-5 text-gray-900 dark:text-white" />
+              <Menu className="h-5 w-5 text-white" />
             </button>
           </div>
         </div>
 
         {/* Mobile Menu */}
         {isMobileMenuOpen && (
-          <div className="lg:hidden mt-4 bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
+          <div className="lg:hidden mt-4 bg-gray-50 rounded-lg p-4 z-50">
             <ul className="space-y-3">
               {navLinks.map((link) => (
                 <li key={link.name}>
-                  <a
-                    href={link.href}
-                    className="block text-sm font-medium text-gray-900 dark:text-white hover:text-primary-700 dark:hover:text-primary-500"
+                  <Link
+                    to={link.href}
+                    className="block text-sm font-medium text-gray-900 hover:text-white"
                   >
                     {link.name}
-                  </a>
+                  </Link>
                 </li>
               ))}
             </ul>

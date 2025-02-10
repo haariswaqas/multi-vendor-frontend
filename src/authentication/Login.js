@@ -43,20 +43,20 @@ const Login = () => {
   };
 
   return (
-    <section className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 to-gray-300 py-12 px-6">
+    <section className="min-h-screen flex items-center justify-center bg-white py-12 px-6">
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.5 }}
-        className="w-full max-w-md bg-gray-800 rounded-lg shadow-xl p-8 space-y-6"
+        className="w-full max-w-md bg-gradient-to-r from-green-700 to-green-500 rounded-2xl shadow-xl p-8 space-y-6"
       >
         <Link to="/" className="block text-center mb-4">
           <div className="flex items-center justify-center gap-2">
-            <LogInIcon className="w-8 h-8 text-gray-100" />
-            <h1 className="text-3xl font-bold text-gray-100">MultiVendorApp</h1>
+            <LogInIcon className="w-8 h-8 text-gray-200" />
+            <h1 className="text-3xl font-bold text-gray-200">CyberMart</h1>
           </div>
         </Link>
-        <h2 className="text-2xl font-semibold text-gray-100 text-center mb-6">
+        <h2 className="text-2xl font-semibold text-gray-200 text-center mb-6">
           Welcome Back
         </h2>
 
@@ -66,7 +66,7 @@ const Login = () => {
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
-              className="bg-red-600/30 text-gray-100 p-4 rounded-lg text-center mb-4"
+              className="bg-red-700/40 text-gray-100 p-4 rounded-lg text-center mb-4"
             >
               {error}
             </motion.div>
@@ -78,7 +78,7 @@ const Login = () => {
           <div>
             <label htmlFor="email" className="block text-sm font-medium text-gray-300">
               <div className="flex items-center gap-1">
-                <UserIcon className="w-5 h-5" />
+                <UserIcon className="w-5 h-5 text-gray-400" />
                 <span>Your Email</span>
               </div>
             </label>
@@ -88,7 +88,7 @@ const Login = () => {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full p-3 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500 text-gray-900"
+              className="w-full p-3 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-400 text-gray-900"
             />
           </div>
 
@@ -96,7 +96,7 @@ const Login = () => {
           <div>
             <label htmlFor="password" className="block text-sm font-medium text-gray-300">
               <div className="flex items-center gap-1">
-                <LockIcon className="w-5 h-5" />
+                <LockIcon className="w-5 h-5 text-gray-400" />
                 <span>Password</span>
               </div>
             </label>
@@ -106,7 +106,7 @@ const Login = () => {
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full p-3 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500 text-gray-900"
+              className="w-full p-3 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-400 text-gray-900"
             />
           </div>
 
@@ -114,7 +114,7 @@ const Login = () => {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full bg-gray-700 text-gray-100 py-2 rounded-md hover:bg-gray-600 transition-colors text-lg focus:outline-none focus:ring-2 focus:ring-gray-500"
+            className="w-full bg-gray-700 text-gray-100 py-2 rounded-md hover:bg-gray-500 transition-colors text-lg focus:outline-none focus:ring-2 focus:ring-gray-400"
           >
             {isLoading ? 'Logging in...' : 'Sign In'}
           </button>

@@ -1,8 +1,10 @@
+// ProductDetail.jsx
 import React, { useEffect, useReducer, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../authentication/AuthContext';
-import { deleteProduct, manageCart } from '../services/ProductServices';
-import { ShoppingCart, Trash2, Edit, Trash } from "lucide-react";
+import { deleteProduct, manageCart, manageWishlist } from '../services/ProductServices';
+import { ShoppingCart, Trash2, Edit, Trash } from 'lucide-react';
+import ImageCarousel from '../components/ui/ImageCarousel'; // Adjust the path as needed
 
 // Initial state for the reducer
 const initialState = {
@@ -46,11 +48,11 @@ function reducer(state, action) {
     case ACTIONS.UPDATE_SELECTED_OPTIONS:
       return {
         ...state,
-        selectedOptions: { 
-          ...state.selectedOptions, 
+        selectedOptions: {
+          ...state.selectedOptions,
           ...Object.fromEntries(
             Object.entries(action.payload).map(([key, value]) => [key, value || null])
-          )
+          ),
         },
       };
     case ACTIONS.SET_QUANTITY:
@@ -72,16 +74,16 @@ const ProductDetail = () => {
   const { authState } = useAuth();
   const [state, dispatch] = useReducer(reducer, initialState);
 
-  // Fetch product details and cart data from the APIs
+  // Fetch product details, seller details, and cart data from the APIs
   useEffect(() => {
     const fetchProductAndSellerDetails = async () => {
       try {
         const [productResponse, cartResponse] = await Promise.all([
           fetch(`http://localhost:8002/${id}`, {
-            headers: { 'Authorization': `Bearer ${authState.token}` },
+            headers: { Authorization: `Bearer ${authState.token}` },
           }),
-          fetch("http://localhost:8003/cart", {
-            headers: { 'Authorization': `Bearer ${authState.token}` },
+          fetch('http://localhost:8003/cart', {
+            headers: { Authorization: `Bearer ${authState.token}` },
           }),
         ]);
 
@@ -105,7 +107,7 @@ const ProductDetail = () => {
           const sellerResponse = await fetch(
             `http://localhost:8001/seller-profile/${productData.seller}`,
             {
-              headers: { 'Authorization': `Bearer ${authState.token}` },
+              headers: { Authorization: `Bearer ${authState.token}` },
             }
           );
           if (!sellerResponse.ok) {
@@ -118,6 +120,7 @@ const ProductDetail = () => {
               name: sellerData.name || 'Name not available',
               id: productData.seller,
               error: null,
+              img: sellerData.img, // If available
             },
           });
         }
@@ -137,7 +140,7 @@ const ProductDetail = () => {
     };
   }, [id, authState.token]);
 
-  // Update selected options and quantity when product and cartItems are available
+  // Update selected options and quantity if product is already in the cart
   useEffect(() => {
     if (state.product && state.cartItems.length > 0) {
       const cartEntry = state.cartItems.find((item) => {
@@ -156,7 +159,7 @@ const ProductDetail = () => {
     }
   }, [state.product, state.cartItems]);
 
-  // Determine if the product is in the cart using string comparison
+  // Determine if the product is already in the cart using string comparison
   const isProductInCart = state.cartItems.some((item) => {
     if (typeof item.product === 'string') {
       return String(item.product) === String(state.product._id);
@@ -164,32 +167,33 @@ const ProductDetail = () => {
     return String(item?.product?._id) === String(state.product._id);
   });
 
-  // Handler to add the product to the cart and then navigate to /cart after a delay
+  // Determine if the current user is the seller of the product
+  const isSeller = state.sellerDetails.id === authState.user._id;
+
+  // Handler to add the product to the cart and navigate to /cart after a short delay
   const handleAddToCart = useCallback(async () => {
     try {
       if (!authState.isAuthenticated) {
         dispatch({
           type: ACTIONS.SET_ERROR,
-          payload: "Please login to manage cart",
+          payload: 'Please login to manage cart',
         });
         return;
       }
-
-    
 
       // Update the backend cart
       await manageCart(
         id,
         state.quantity,
         authState.token,
-        state.selectedOptions.size ? [state.selectedOptions.size] :null,
+        state.selectedOptions.size ? [state.selectedOptions.size] : null,
         state.selectedOptions.color ? [state.selectedOptions.color] : null,
         false
       );
 
       // Re-fetch the updated cart data
-      const cartResponse = await fetch("http://localhost:8003/cart", {
-        headers: { 'Authorization': `Bearer ${authState.token}` },
+      const cartResponse = await fetch('http://localhost:8003/cart', {
+        headers: { Authorization: `Bearer ${authState.token}` },
       });
       if (cartResponse.ok) {
         const cartData = await cartResponse.json();
@@ -200,25 +204,19 @@ const ProductDetail = () => {
       }
 
       // Clear any previous errors
-      dispatch({ type: ACTIONS.SET_ERROR, payload: "" });
+      dispatch({ type: ACTIONS.SET_ERROR, payload: '' });
 
       // Delay before navigating to the cart page
       setTimeout(() => {
         navigate('/cart');
-      }, 400);
+      }, 3000);
     } catch (err) {
       dispatch({
         type: ACTIONS.SET_ERROR,
-        payload: err.message || "An error occurred while adding the product.",
+        payload: err.message || 'An error occurred while adding the product.',
       });
     }
-  }, [
-    authState,
-    id,
-    state.quantity,
-    state.selectedOptions,
-    navigate,
-  ]);
+  }, [authState, id, state.quantity, state.selectedOptions, navigate]);
 
   // Handler to remove the product from the cart
   const handleRemoveFromCart = useCallback(async () => {
@@ -226,7 +224,7 @@ const ProductDetail = () => {
       if (!authState.isAuthenticated) {
         dispatch({
           type: ACTIONS.SET_ERROR,
-          payload: "Please login to manage cart",
+          payload: 'Please login to manage cart',
         });
         return;
       }
@@ -235,8 +233,8 @@ const ProductDetail = () => {
       await manageCart(id, 0, authState.token, [], [], true);
 
       // Re-fetch the updated cart data
-      const cartResponse = await fetch("http://localhost:8003/cart", {
-        headers: { 'Authorization': `Bearer ${authState.token}` },
+      const cartResponse = await fetch('http://localhost:8003/cart', {
+        headers: { Authorization: `Bearer ${authState.token}` },
       });
       if (cartResponse.ok) {
         const cartData = await cartResponse.json();
@@ -246,19 +244,22 @@ const ProductDetail = () => {
         dispatch({ type: ACTIONS.SET_CART_ITEMS, payload: items });
       }
 
-      // Reset the selected options and quantity to default values
-      dispatch({ type: ACTIONS.UPDATE_SELECTED_OPTIONS, payload: { size: '', color: '' } });
+      // Reset selected options and quantity to defaults
+      dispatch({
+        type: ACTIONS.UPDATE_SELECTED_OPTIONS,
+        payload: { size: '', color: '' },
+      });
       dispatch({ type: ACTIONS.SET_QUANTITY, payload: 1 });
-      dispatch({ type: ACTIONS.SET_ERROR, payload: "" });
+      dispatch({ type: ACTIONS.SET_ERROR, payload: '' });
     } catch (err) {
       dispatch({
         type: ACTIONS.SET_ERROR,
-        payload: err.message || "An error occurred while removing the product.",
+        payload: err.message || 'An error occurred while removing the product.',
       });
     }
   }, [authState, id]);
 
-  // Handlers for editing and deleting products (shown only for non-buyers)
+  // Handlers for editing and deleting products (only shown for the seller)
   const handleEditClick = () => navigate(`/edit-product/${id}`);
   const handleDeleteClick = async () => {
     if (window.confirm('Are you sure you want to delete this product?')) {
@@ -285,7 +286,7 @@ const ProductDetail = () => {
     );
   }
 
-  // Show a loading indicator while fetching data
+  // Show a loading indicator while data is being fetched
   if (state.isLoading || !state.product) {
     return (
       <div className="min-h-screen bg-gray-100 py-12 px-4 flex items-center justify-center">
@@ -302,12 +303,11 @@ const ProductDetail = () => {
             {state.product.name}
           </h2>
           <div className="lg:flex lg:space-x-8">
-            {/* Product Image */}
+            {/* Product Image Carousel */}
             <div className="lg:w-1/2 mb-8 lg:mb-0">
-              <img
-                src={state.product.img[0]}
+              <ImageCarousel
+                images={state.product.img}
                 alt={state.product.name}
-                className="w-full h-auto object-cover rounded-lg shadow-md"
               />
             </div>
             {/* Product Details */}
@@ -322,126 +322,141 @@ const ProductDetail = () => {
                 <span className="font-medium">Type:</span> {state.product.type}
               </div>
               <div className="text-gray-600">
-                <span className="font-medium">Available:</span> {state.product.available ? 'Yes' : 'No'}
+                <span className="font-medium">Available:</span>{' '}
+                {state.product.available ? 'Yes' : 'No'}
               </div>
               <div className="text-gray-600">
-                <span className="font-medium">Stock:</span> {state.product.stock}
-              </div>
-              
-              {/* Options */}
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                {/* Size Selector */}
-                <div>
-                  <label className="block text-gray-800 text-sm font-medium mb-2">Size:</label>
-                  <select
-                    className="w-full border border-gray-300 rounded-md p-2 text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    value={state.selectedOptions.size || ''}
-                    onChange={(e) =>
-                      dispatch({
-                        type: ACTIONS.UPDATE_SELECTED_OPTIONS,
-                        payload: { size: e.target.value || null },
-                      })
-                    }
-                    disabled={isProductInCart}
-                  >
-                    <option value="">Select size</option>
-                    {state.product.sizes?.map((size) => (
-                      <option key={size} value={size}>
-                        {size}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                {/* Color Selector */}
-                <div>
-                  <label className="block text-gray-800 text-sm font-medium mb-2">Color:</label>
-                  <select
-                    className="w-full border border-gray-300 rounded-md p-2 text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    value={state.selectedOptions.color || ''}
-                    onChange={(e) =>
-                      dispatch({
-                        type: ACTIONS.UPDATE_SELECTED_OPTIONS,
-                        payload: { color: e.target.value || null },
-                      })
-                    }
-                    disabled={isProductInCart}
-                  >
-                    <option value="">Select color</option>
-                    {state.product.colors?.map((color) => (
-                      <option key={color} value={color}>
-                        {color}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                {/* Quantity Input */}
-                <div className="sm:col-span-2">
-                  <label className="block text-gray-800 text-sm font-medium mb-2">Quantity:</label>
-                  <input
-                    type="number"
-                    className="w-full border border-gray-300 rounded-md p-2 text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    value={state.quantity}
-                    min="1"
-                    onChange={(e) =>
-                      dispatch({
-                        type: ACTIONS.SET_QUANTITY,
-                        payload: parseInt(e.target.value, 10) || 1,
-                      })
-                    }
-                    disabled={isProductInCart}
-                  />
-                </div>
+                <span className="font-medium">Stock:</span>{' '}
+                {state.product.stock}
               </div>
 
-              {/* Cart Action Button */}
-              <div className="pt-4">
-                { !isProductInCart ? (
-                  <button
-                    onClick={handleAddToCart}
-                    className="w-full flex items-center justify-center px-4 py-3 rounded-lg font-medium bg-blue-600 hover:bg-blue-700 text-white transition-colors duration-200"
-                  >
-                    <ShoppingCart className="w-5 h-5 mr-2" />
-                    Add to Cart
-                  </button>
-                ) : (
-                  <button
-                    onClick={handleRemoveFromCart}
-                    className="w-full flex items-center justify-center px-4 py-3 rounded-lg font-medium bg-red-600 hover:bg-red-700 text-white transition-colors duration-200"
-                  >
-                    <Trash2 className="w-5 h-5 mr-2" />
-                    Remove
-                  </button>
+              {/* Only show purchase options if the current user is not the seller */}
+              {!isSeller && (
+                <>
+                  {/* Options */}
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    {/* Size Selector */}
+                    <div>
+                      <label className="block text-gray-800 text-sm font-medium mb-2">
+                        Size:
+                      </label>
+                      <select
+                        className="w-full border border-gray-300 rounded-md p-2 text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        value={state.selectedOptions.size || ''}
+                        onChange={(e) =>
+                          dispatch({
+                            type: ACTIONS.UPDATE_SELECTED_OPTIONS,
+                            payload: { size: e.target.value || null },
+                          })
+                        }
+                      >
+                        <option value="">Select size</option>
+                        {state.product.sizes?.map((size) => (
+                          <option key={size} value={size}>
+                            {size}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    {/* Color Selector */}
+                    <div>
+                      <label className="block text-gray-800 text-sm font-medium mb-2">
+                        Color:
+                      </label>
+                      <select
+                        className="w-full border border-gray-300 rounded-md p-2 text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        value={state.selectedOptions.color || ''}
+                        onChange={(e) =>
+                          dispatch({
+                            type: ACTIONS.UPDATE_SELECTED_OPTIONS,
+                            payload: { color: e.target.value || null },
+                          })
+                        }
+                      >
+                        <option value="">Select color</option>
+                        {state.product.colors?.map((color) => (
+                          <option key={color} value={color}>
+                            {color}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    {/* Quantity Input */}
+                    <div className="sm:col-span-2">
+                      <label className="block text-gray-800 text-sm font-medium mb-2">
+                        Quantity:
+                      </label>
+                      <input
+                        type="number"
+                        className="w-full border border-gray-300 rounded-md p-2 text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        value={state.quantity}
+                        min="1"
+                        onChange={(e) =>
+                          dispatch({
+                            type: ACTIONS.SET_QUANTITY,
+                            payload: parseInt(e.target.value, 10) || 1,
+                          })
+                        }
+                      />
+                    </div>
+                  </div>
+
+                  {/* Cart Action Button */}
+                  <div className="pt-4">
+                    {!isProductInCart ? (
+                      <button
+                        onClick={handleAddToCart}
+                        className="w-full flex items-center justify-center px-4 py-3 rounded-lg font-medium bg-blue-600 hover:bg-blue-700 text-white transition-colors duration-200"
+                      >
+                        <ShoppingCart className="w-5 h-5 mr-2" />
+                        Add to Cart
+                      </button>
+                    ) : (
+                      <button
+                        onClick={handleRemoveFromCart}
+                        className="w-full flex items-center justify-center px-4 py-3 rounded-lg font-medium bg-red-600 hover:bg-red-700 text-white transition-colors duration-200"
+                      >
+                        <Trash2 className="w-5 h-5 mr-2" />
+                        Remove
+                      </button>
+                    )}
+                  </div>
+                </>
+              )}
+
+              {/* Seller Information */}
+              <div className="text-gray-600 text-sm pt-4 flex items-center gap-2">
+                {state.sellerDetails.img && (
+                  <img
+                    src={state.sellerDetails.img}
+                    alt={state.sellerDetails.name}
+                    className="w-8 h-8 rounded-full object-cover"
+                  />
+                )}
+                <span>
+                  Seller:{' '}
+                  {state.sellerDetails.id ? (
+                    <Link
+                      to={`/seller/${state.sellerDetails.id}`}
+                      className="text-blue-600 hover:underline"
+                    >
+                      {state.sellerDetails.name}
+                    </Link>
+                  ) : (
+                    state.sellerDetails.name
+                  )}
+                </span>
+                {state.sellerDetails.error && (
+                  <span className="text-red-500 ml-2">
+                    (Error fetching seller details)
+                  </span>
                 )}
               </div>
-            {/* Seller Information */}
-<div className="text-gray-600 text-sm pt-4 flex items-center gap-2">
-  {state.sellerDetails.img && (
-    <img
-      src={state.sellerDetails.img}
-      alt={state.sellerDetails.name}
-      className="w-8 h-8 rounded-full object-cover"
-    />
-  )}
-  <span>
-    Seller:{" "}
-    {state.sellerDetails.id ? (
-      <Link to={`/seller/${state.sellerDetails.id}`} className="text-blue-600 hover:underline">
-        {state.sellerDetails.name}
-      </Link>
-    ) : (
-      state.sellerDetails.name
-    )}
-  </span>
-  {state.sellerDetails.error && (
-    <span className="text-red-500 ml-2">(Error fetching seller details)</span>
-  )}
-</div>
-
             </div>
           </div>
 
-          {/* Admin Controls: Only shown if the user is not a Buyer */}
-          { authState.user.role !== "Buyer" && (
+          {/* Admin Controls: Only shown if the current user is the seller */}
+          {isSeller && (
             <div className="flex justify-center mt-8 space-x-4">
               <button
                 onClick={handleEditClick}

@@ -3,9 +3,9 @@ import { useAuth } from '../authentication/AuthContext';
 import { Link, useParams } from 'react-router-dom';
 import { 
   HeartIcon, 
-
   InfoIcon, 
-  Sparkles 
+  Sparkles,
+  ArrowUpDown 
 } from 'lucide-react';
 import { 
   updateLocalStorageWishlist, 
@@ -17,7 +17,7 @@ import {
 } from '../services/ProductServices';
 import ProductCategoryList from './ProductCategoryList';
 
-/* -------------------------- ProductCard Component -------------------------- */
+// ProductCard component remains the same
 const ProductCard = ({ 
   product, 
   isInWishlist, 
@@ -31,9 +31,7 @@ const ProductCard = ({
 }) => {
   return (
     <div className="group relative">
-      {/* Card Container */}
       <div className="relative bg-white rounded-xl overflow-hidden transition-all duration-300 hover:shadow-xl">
-        {/* Image Section */}
         <div className="relative aspect-square overflow-hidden">
           <img 
             src={product.img || "/api/placeholder/400/400"} 
@@ -48,9 +46,7 @@ const ProductCard = ({
           </Link>
         </div>
 
-        {/* Content Section */}
         <div className="p-6 space-y-4">
-          {/* Product Info */}
           <div className="space-y-2">
             <h3 className="text-lg font-semibold text-gray-900 truncate">
               {product.name}
@@ -60,7 +56,6 @@ const ProductCard = ({
             </p>
           </div>
 
-          {/* Price and Stock */}
           <div className="flex items-center justify-between">
             <div className="space-y-1">
               <p className="text-2xl font-bold text-gray-900">${product.price}</p>
@@ -71,7 +66,6 @@ const ProductCard = ({
               </div>
             </div>
 
-            {/* Wishlist Button */}
             <button
               onClick={() => {
                 if (!loadingWishlist) {
@@ -96,7 +90,6 @@ const ProductCard = ({
           </div>
         </div>
 
-        {/* Optional Loading Overlay */}
         {(loadingWishlist || loadingCart) && (
           <div className="absolute inset-0 bg-white/60 flex items-center justify-center">
             <div className="w-8 h-8 border-4 border-gray-300 border-t-gray-500 rounded-full animate-spin" />
@@ -107,11 +100,12 @@ const ProductCard = ({
   );
 };
 
-/* -------------------------- ProductList Component -------------------------- */
 const ProductList = () => {
   const { authState } = useAuth();
   const { type } = useParams();
   const [products, setProducts] = useState([]);
+  const [sortedProducts, setSortedProducts] = useState([]);
+  const [sortOption, setSortOption] = useState('default');
   const [error, setError] = useState('');
   const [wishlist, setWishlist] = useState(new Set());
   const [cart, setCart] = useState(new Set());
@@ -128,7 +122,30 @@ const ProductList = () => {
     setCart(new Set(Array.isArray(storedCart) ? storedCart : []));
   }, []);
 
-  // Fetch products by category using the URL parameter "type"
+  // Sort products when sortOption or products change
+  useEffect(() => {
+    const sortProducts = () => {
+      const productsCopy = [...products];
+      
+      switch (sortOption) {
+        case 'price-asc':
+          productsCopy.sort((a, b) => a.price - b.price);
+          break;
+        case 'price-desc':
+          productsCopy.sort((a, b) => b.price - a.price);
+          break;
+        default:
+          // Keep original order
+          break;
+      }
+      
+      setSortedProducts(productsCopy);
+    };
+
+    sortProducts();
+  }, [sortOption, products]);
+
+  // Fetch products by category
   useEffect(() => {
     const fetchProductsByCategoryFunc = async () => {
       try {
@@ -151,7 +168,7 @@ const ProductList = () => {
     fetchProductsByCategoryFunc();
   }, [type, authState.token]);
 
-  // Helpers to update localStorage for wishlist and cart
+  // Rest of the service functions remain the same
   const updateLocalStorageWishlistFromService = (updatedWishlist) => {
     updateLocalStorageWishlist(updatedWishlist);
   };
@@ -160,7 +177,6 @@ const ProductList = () => {
     updateLocalStorageCart(updatedCart);
   };
 
-  // Wishlist service calls
   const addToWishlistFromService = async (productId) => {
     setLoadingWishlist((prev) => new Map(prev).set(productId, true));
     try {
@@ -202,7 +218,6 @@ const ProductList = () => {
     }
   };
 
-  // Cart service calls
   const addToCartFromService = async (productId, quantity) => {
     setLoadingCart((prev) => new Map(prev).set(productId, true));
     try {
@@ -246,10 +261,8 @@ const ProductList = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-white via-blue-50 to-gray-500 py-16 px-6 relative">
-      {/* Decorative background element */}
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-blue-200/20 via-transparent to-transparent" />
       <div className="container mx-auto relative">
-        {/* Header Section */}
         <div className="text-center space-y-6 mb-16">
           <div className="flex items-center justify-center gap-3 mb-2">
             <Sparkles className="w-8 h-8 text-gray-600" />
@@ -261,30 +274,44 @@ const ProductList = () => {
           <p className="text-lg text-gray-700 max-w-2xl mx-auto">
             Discover our carefully curated collection of exceptional {type ? type.replace('-', ' ') : 'products'}.
           </p>
-          {/* Browse Categories Button */}
-          <div className="text-center">
+          
+          {/* Controls Section */}
+          <div className="flex justify-center items-center gap-4">
             <button 
               onClick={() => setShowCategories(prev => !prev)}
               className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
             >
               {showCategories ? 'Hide Categories' : 'Browse Categories'}
             </button>
-            <Link to ="/all-products"
-                            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors ml-3"
+            
+            <Link to="/all-products"
+              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
             >
               View All Products
             </Link>
+
+            {/* Sort Dropdown */}
+            <div className="relative flex items-center gap-2">
+              <ArrowUpDown className="w-4 h-4 text-gray-600" />
+              <select
+                value={sortOption}
+                onChange={(e) => setSortOption(e.target.value)}
+                className="px-4 py-2 bg-white border border-gray-300 rounded shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="default">Default Order</option>
+                <option value="price-asc">Price: Low to High</option>
+                <option value="price-desc">Price: High to Low</option>
+              </select>
+            </div>
           </div>
         </div>
 
-        {/* Conditionally render the ProductCategoryList */}
         {showCategories && (
           <div className="mb-16">
             <ProductCategoryList />
           </div>
         )}
 
-        {/* Error Message */}
         {error && (
           <div className="max-w-md mx-auto mb-8">
             <div className="bg-red-100 border border-red-200 text-red-600 p-4 rounded-lg text-center">
@@ -293,9 +320,8 @@ const ProductList = () => {
           </div>
         )}
 
-        {/* Products Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-          {products.map((product) => (
+          {sortedProducts.map((product) => (
             <ProductCard
               key={product._id}
               product={product}

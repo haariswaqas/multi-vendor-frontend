@@ -1,18 +1,22 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Heart, Info, Package, ShoppingCart, Sparkles } from 'lucide-react';
+import { Heart, Info, Package, ShoppingCart, Sparkles, ArrowUpDown } from 'lucide-react';
 import { useAuth } from '../authentication/AuthContext';
-import { fetchProducts, getWishlist, addToWishlist, removeFromWishlist } from '../services/ProductServices';
+import { fetchProducts, fetchWishlist, manageWishlist, addWishlist, removeWishlist } from '../services/ProductServices';
 import ProductCategoryList from './ProductCategoryList';
 
 // ProductCard Component
 const ProductCard = ({ 
   product, 
   isInWishlist, 
-  onAddToWishlist, 
-  onRemoveFromWishlist, 
+  onUpdateWishlist, 
   loadingWishlist 
 }) => {
+  // Ensure product.img is an array; if not, wrap it in an array and use a placeholder if needed
+  const images = Array.isArray(product.img)
+    ? product.img
+    : [product.img || "/api/placeholder/400/400"];
+
   return (
     <div className="group relative">
       {/* Card Container */}
@@ -20,7 +24,7 @@ const ProductCard = ({
         {/* Image Section */}
         <div className="relative aspect-square overflow-hidden">
           <img 
-            src={product.img || "/api/placeholder/400/400"} 
+            src={images[0]} 
             alt={product.name}
             className="w-full h-full object-cover transform transition-transform duration-500 group-hover:scale-110"
           />
@@ -34,6 +38,21 @@ const ProductCard = ({
             >
               <Info className="w-5 h-5 text-gray-700" />
             </Link>
+            <button
+              onClick={() => {
+                if (!loadingWishlist) {
+                  onUpdateWishlist(product, isInWishlist);
+                }
+              }}
+              disabled={loadingWishlist}
+              className="p-2 bg-white rounded-full shadow-lg hover:bg-gray-100 transition-colors"
+            >
+              {isInWishlist ? (
+                <Heart className="w-5 h-5 text-red-500 fill-red-500" />
+              ) : (
+                <Heart className="w-5 h-5 text-gray-700" />
+              )}
+            </button>
             <button
               className="p-2 bg-white rounded-full shadow-lg hover:bg-gray-100 transition-colors"
             >
@@ -67,38 +86,8 @@ const ProductCard = ({
                 </span>
               </div>
             </div>
-            
-            {/* Wishlist Button */}
-            <button
-              onClick={() => {
-                if (!loadingWishlist) {
-                  isInWishlist ? onRemoveFromWishlist() : onAddToWishlist();
-                }
-              }}
-              disabled={loadingWishlist}
-              className={`p-3 rounded-full transition-all duration-300 ${
-                isInWishlist 
-                  ? 'bg-red-100 hover:bg-red-200' 
-                  : 'bg-gray-100 hover:bg-gray-200'
-              } disabled:opacity-50 disabled:cursor-not-allowed`}
-            >
-              <Heart 
-                className={`w-6 h-6 transition-colors duration-300 ${
-                  isInWishlist 
-                    ? 'text-red-500 fill-red-500' 
-                    : 'text-gray-600'
-                }`} 
-              />
-            </button>
           </div>
         </div>
-
-        {/* Loading Overlay */}
-        {loadingWishlist && (
-          <div className="absolute inset-0 bg-white/60 flex items-center justify-center">
-            <div className="w-8 h-8 border-4 border-gray-300 border-t-gray-500 rounded-full animate-spin" />
-          </div>
-        )}
       </div>
     </div>
   );
@@ -109,17 +98,25 @@ const ProductList = () => {
   const { authState } = useAuth();
   const [products, setProducts] = useState([]);
   const [error, setError] = useState('');
+  // Wishlist stored as a Set of product IDs
   const [wishlist, setWishlist] = useState(new Set());
+  const [sortedProducts, setSortedProducts] = useState([]);
+  const [sortOption, setSortOption] = useState('default');
+  // Map to track loading state for each product (by product._id)
   const [loadingWishlist, setLoadingWishlist] = useState(new Map());
   const [showCategories, setShowCategories] = useState(false);
 
-  // Fetch Wishlist on mount or when token changes
+  // Fetch wishlist on mount or when token changes
   useEffect(() => {
     const fetchWishlistFromService = async () => {
       try {
-        const wishlistData = await getWishlist(authState.token);
-        setWishlist(new Set(wishlistData.map((item) => item._id)));
-        localStorage.setItem('wishlist', JSON.stringify(wishlistData.map((item) => item._id)));
+        const wishlistData = await fetchWishlist(authState.token);
+        // Assume wishlistData is an array of wishlist objects; extract product IDs from items in the first wishlist
+        const wishlistIds = wishlistData && wishlistData.length > 0 
+          ? wishlistData[0].items.map(item => item.product._id)
+          : [];
+        setWishlist(new Set(wishlistIds));
+        localStorage.setItem('wishlist', JSON.stringify(wishlistIds));
       } catch (error) {
         console.error('Failed to fetch wishlist:', error);
       }
@@ -130,7 +127,7 @@ const ProductList = () => {
     }
   }, [authState.token]);
 
-  // Fetch Products on mount or when token changes
+  // Fetch products on mount or when token changes
   useEffect(() => {
     const fetchProductsFromService = async () => {
       try {
@@ -144,45 +141,67 @@ const ProductList = () => {
     fetchProductsFromService();
   }, [authState.token]);
 
-  // Add product to wishlist
-  const addToWishlistFromService = async (productId) => {
-    setLoadingWishlist((prev) => new Map(prev).set(productId, true));
-    try {
-      await addToWishlist(productId, authState.token);
-      setWishlist((prev) => new Set(prev).add(productId));
-      localStorage.setItem('wishlist', JSON.stringify(Array.from(wishlist).concat(productId)));
-    } catch (error) {
-      console.error('Error adding to wishlist:', error);
-    } finally {
-      setLoadingWishlist((prev) => {
-        const updatedLoading = new Map(prev);
-        updatedLoading.delete(productId);
-        return updatedLoading;
-      });
-    }
-  };
+  useEffect(() => {
+    const sortProducts = () => {
+      const productsCopy = [...products];
+      
+      switch (sortOption) {
+        case 'price-asc':
+          productsCopy.sort((a, b) => a.price - b.price);
+          break;
+        case 'price-desc':
+          productsCopy.sort((a, b) => b.price - a.price);
+          break;
+        default:
+          // Keep original order
+          break;
+      }
+      
+      setSortedProducts(productsCopy);
+    };
 
-  // Remove product from wishlist
-  const removeFromWishlistFromService = async (productId) => {
-    setLoadingWishlist((prev) => new Map(prev).set(productId, true));
-    try {
-      await removeFromWishlist(productId, authState.token);
-      setWishlist((prev) => {
-        const updatedWishlist = new Set(prev);
-        updatedWishlist.delete(productId);
-        return updatedWishlist;
-      });
-      localStorage.setItem('wishlist', JSON.stringify(Array.from(wishlist).filter(id => id !== productId)));
-    } catch (error) {
-      console.error('Error removing from wishlist:', error);
-    } finally {
-      setLoadingWishlist((prev) => {
-        const updatedLoading = new Map(prev);
-        updatedLoading.delete(productId);
-        return updatedLoading;
-      });
+    sortProducts();
+  }, [sortOption, products]);
+
+  // Update wishlist using the backend PUT /wishlist endpoint
+// Update wishlist using the backend endpoints
+const updateWishlistFromService = async (product, isCurrentlyInWishlist) => {
+  // Set loading state for this product
+  setLoadingWishlist(prev => new Map(prev).set(product._id, true));
+  
+  try {
+    if (isCurrentlyInWishlist) {
+      // If it's currently in wishlist, remove it
+      await removeWishlist(product, 0, true, authState.token);
+    } else {
+      // If it's not in wishlist, add it
+      await addWishlist(product, 1, false, authState.token);
     }
-  };
+    
+    // Update wishlist state locally
+    setWishlist(prev => {
+      const newWishlist = new Set(prev);
+      if (isCurrentlyInWishlist) {
+        newWishlist.delete(product._id);
+      } else {
+        newWishlist.add(product._id);
+      }
+      return newWishlist;
+    });
+    
+    // Update localStorage
+    localStorage.setItem('wishlist', JSON.stringify(Array.from(wishlist)));
+  } catch (error) {
+    console.error('Error updating wishlist:', error);
+  } finally {
+    setLoadingWishlist(prev => {
+      const updatedLoading = new Map(prev);
+      updatedLoading.delete(product._id);
+      return updatedLoading;
+    });
+  }
+};
+
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-white via-blue-50 to-gray-500 py-16 px-6 relative">
@@ -193,7 +212,7 @@ const ProductList = () => {
         <div className="text-center space-y-6 mb-16">
           <div className="flex items-center justify-center gap-3 mb-2">
             <Sparkles className="w-8 h-8 text-gray-600" />
-            <h1 className="text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-gray-600 via-gray-1100 to-gray-900">
+            <h1 className="text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-gray-600 via-gray-900 to-gray-900">
               Our Products
             </h1>
             <Sparkles className="w-8 h-8 text-gray-900" />
@@ -201,14 +220,30 @@ const ProductList = () => {
           <p className="text-lg text-gray-700 max-w-2xl mx-auto">
             Discover our carefully curated collection of exceptional products.
           </p>
-          {/* Browse Categories Button */}
-          <div className="text-center">
+          
+          {/* Controls Section */}
+          <div className="flex justify-center items-center gap-4">
             <button 
               onClick={() => setShowCategories(prev => !prev)}
               className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
             >
               {showCategories ? 'Hide Categories' : 'Browse Categories'}
             </button>
+            
+            <div className="relative">
+              <div className="flex items-center gap-2">
+                <ArrowUpDown className="w-4 h-4 text-gray-600" />
+                <select
+                  value={sortOption}
+                  onChange={(e) => setSortOption(e.target.value)}
+                  className="px-4 py-2 bg-white border border-gray-300 rounded shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="default">Default Order</option>
+                  <option value="price-asc">Price: Low to High</option>
+                  <option value="price-desc">Price: High to Low</option>
+                </select>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -229,7 +264,7 @@ const ProductList = () => {
         )}
 
         {/* Products Grid */}
-        {products.length === 0 ? (
+        {sortedProducts.length === 0 ? (
           <div className="text-center py-20">
             <Package className="w-16 h-16 text-blue-300/30 mx-auto mb-4" />
             <p className="text-gray-600 text-lg">
@@ -238,13 +273,12 @@ const ProductList = () => {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-            {products.map((product) => (
+            {sortedProducts.map(product => (
               <ProductCard
                 key={product._id}
                 product={product}
                 isInWishlist={wishlist.has(product._id)}
-                onAddToWishlist={() => addToWishlistFromService(product._id)}
-                onRemoveFromWishlist={() => removeFromWishlistFromService(product._id)}
+                onUpdateWishlist={updateWishlistFromService}
                 loadingWishlist={loadingWishlist.get(product._id)}
               />
             ))}

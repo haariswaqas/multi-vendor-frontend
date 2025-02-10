@@ -65,13 +65,17 @@ const EditOrderStatus = () => {
       >
         <div className="mb-4">
           <label className="block text-gray-700 font-bold mb-2">New Status</label>
-          <input
-            type="text"
+          <select
             value={status}
             onChange={handleStatusChange}
-            placeholder="Enter new status (e.g., received)"
             className="w-full p-2 border border-gray-300 rounded"
-          />
+          >
+            <option value="">Select Status</option>
+            <option value="received">Received</option>
+            <option value="on the way">On the Way</option>
+            <option value="delivered">Delivered</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
         </div>
         <button
           type="submit"

@@ -45,17 +45,17 @@ const Register = () => {
   };
 
   return (
-    <section className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 to-gray-300 py-12 px-6">
+    <section className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-0 to-gray-0 py-12 px-6">
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.5 }}
-        className="w-full max-w-md bg-gray-800 rounded-lg shadow-xl p-8 space-y-6"
+        className="w-full max-w-md bg-gradient-to-r from-blue-900 to-blue-700 rounded-lg shadow-xl p-8 space-y-6"
       >
         <Link to="/" className="block text-center mb-4">
           <div className="flex items-center justify-center gap-2">
             <UserPlus className="w-8 h-8 text-gray-100" />
-            <h1 className="text-3xl font-bold text-gray-100">MultiVendorApp</h1>
+            <h1 className="text-3xl font-bold text-gray-100">CyberMart</h1>
           </div>
         </Link>
         <h2 className="text-2xl font-semibold text-gray-100 text-center mb-6">
@@ -161,7 +161,6 @@ const Register = () => {
             <label htmlFor="role" className="block text-sm font-medium text-gray-300">
               Role
             </label>
-        
             <select
               id="role"
               value={role}

@@ -4,6 +4,7 @@ import axios from 'axios';
 
 const API_URL = 'http://localhost:8002/';
 const CART_URL = 'http://localhost:8003/';
+const USER_URL = 'http://localhost:8001/';
 
 // Fetch all products
 export const fetchProducts = async (token) => {
@@ -72,54 +73,41 @@ export const updateLocalStorageCart = (updatedCart) => {
 
 /* --- Wishlist Functions --- */
 
-// Add to Wishlist (POST)
-// Using POST is a common RESTful pattern for creating a new wishlist entry.
-export const addToWishlist = async (productId, token, productDetails = {}) => {
-  try {
-    const payload = {
-      product: {
-        _id: productId,
-        // Pass sizes/colors if available; otherwise, default to empty arrays.
-        sizes: productDetails.sizes || [],
-        colors: productDetails.colors || [],
-      },
-      amount: 1, // amount can be used if needed; typically 1 for wishlist items
-    };
 
-    const response = await axios.post(
-      `${API_URL}wishlist`,
-      payload,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
-    );
-    return response.data;
-  } catch (error) {
-    throw new Error('Error adding product to wishlist: ' + error.message);
-  }
-};
 
-// Remove from Wishlist (DELETE)
-export const removeFromWishlist = async (productId, token) => {
-  try {
-    const response = await axios.delete(`${API_URL}wishlist/${productId}`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-    return response.data;
-  } catch (error) {
-    throw new Error('Error removing product from wishlist: ' + error.message);
-  }
-};
-export const getWishlist = async (token) => {
-  const response = await axios.get(`${API_URL}/wishlist`, {
-    headers: { Authorization: `Bearer ${token}` },
+
+// Update Wishlist using PUT (for both adding and removing)
+// ProductServices.js
+export const addWishlist = async (product, amount, isRemove, token) => {
+  const response = await fetch('http://localhost:8002/wishlist', {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    },
+    body: JSON.stringify({ product, amount, isRemove }),
   });
-  return response.data;
+  if (!response.ok) {
+    throw new Error('Failed to update wishlist');
+  }
+  return response.json();
 };
+export const removeWishlist = async (product, amount=0, isRemove = true, token) => {
+  const response = await fetch('http://localhost:8002/wishlist', {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    },
+    body: JSON.stringify({ product, amount, isRemove }),
+  });
+  if (!response.ok) {
+    throw new Error('Failed to update wishlist');
+  }
+  return response.json();
+};
+
+
 /* --- Cart Functions --- */
 
 export const fetchCart = async (token) => {
@@ -171,20 +159,64 @@ export const removeFromCart = async (productId, token) => {
 };
 
 // Fetch wishlist data from backend
+// src/services/ProductServices.js
+
 export const fetchWishlist = async (token) => {
   try {
-    const response = await axios.get(`${API_URL}wishlist`, {
+    const response = await fetch('http://localhost:8001/', {
+      method: 'GET',
       headers: {
-        Authorization: `Bearer ${token}`,
-      },
+        'Content-Type': 'application/json',
+        // Pass the token if your API requires authentication.
+        'Authorization': `Bearer ${token}`
+      }
     });
-    if (response.data.error) {
-      throw new Error(response.data.error);
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch wishlist');
     }
-    return response.data;
+
+    // Parse the JSON response.
+    const data = await response.json();
+    return data;
   } catch (error) {
-    throw new Error('Error fetching wishlist: ' + error.message);
+    console.error("Error fetching wishlist:", error);
+    throw error;
   }
 };
+
+
+// Refactored function to manage both add and remove actions in the wishlist
+export const manageWishlist = async (productId, quantity, token, sizes, colors, isRemove = false) => {
+  try {
+    const response = await axios.put(
+      `${API_URL}wishlist`,
+      {
+        product: { _id: productId, sizes, colors },
+        amount: quantity,
+        isRemove: isRemove,
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+    return response.data;
+  } catch (error) {
+    throw new Error(`Error ${isRemove ? 'removing' : 'adding'} product to wishlist: ` + error.message);
+  }
+};
+
+// Usage for adding a product to the wishlist:
+export const addToWishlist = async (productId, quantity, token, sizes, colors) => {
+  return await manageWishlist(productId, quantity, token, sizes, colors, false); // Add to wishlist
+};
+
+// Usage for removing a product from the wishlist:
+export const removeFromWishlist = async (productId, token) => {
+  return await manageWishlist(productId, 0, token, [], [], true); // Remove from wishlist
+};
+
 
 
